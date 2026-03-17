@@ -1044,25 +1044,26 @@ class HubbleDisplayModeSelect(SelectEntity):
             raise HomeAssistantError(str(err)) from err
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **Step 6: Run tests to verify they pass**
 
 ```bash
 pytest tests/components/hubble/test_media_player.py -v
 ```
 Expected: all PASS
 
-- [ ] **Step 6: Run full suite to check for regressions**
+- [ ] **Step 7: Run full suite to check for regressions**
 
 ```bash
 pytest tests/components/hubble/ -v
 ```
 Expected: all PASS
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add homeassistant/components/hubble/__init__.py \
         homeassistant/components/hubble/media_player.py \
+        tests/components/hubble/conftest.py \
         tests/components/hubble/test_media_player.py
 git commit -m "feat(hubble): add media player platform skeleton with both entities"
 ```
@@ -2048,29 +2049,25 @@ async def test_both_entities_share_dict_after_ws_recovery(
         assert display.state == "none"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 2: Run tests — they should all pass**
+
+Both entities and the `on_media_state` closure were implemented in Task 6. These tests exercise code already in place.
 
 ```bash
 pytest tests/components/hubble/test_media_player.py -k "display_select or ws_event or shared_dict" -v
 ```
-Expected: FAIL (display select tests may partially pass from earlier work, WS tests should fail)
-
-- [ ] **Step 3: Run tests — they should pass** (display mode select was implemented in Task 6)
-
-```bash
-pytest tests/components/hubble/test_media_player.py -k "display_select or ws_event or shared_dict" -v
-```
+Expected: all PASS
 
 If any fail, check `HubbleDisplayModeSelect.async_select_option` error wrapping and the `on_media_state` closure in `async_setup_entry`.
 
-- [ ] **Step 4: Run full media player test suite**
+- [ ] **Step 3: Run full media player test suite**
 
 ```bash
 pytest tests/components/hubble/test_media_player.py -v
 ```
 Expected: all PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add tests/components/hubble/test_media_player.py
