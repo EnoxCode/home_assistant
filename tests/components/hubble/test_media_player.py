@@ -614,3 +614,115 @@ async def test_select_source_unknown_label_passes_through(
         )
     # Unknown label passed as-is to the API
     mock_client.async_media_set_source.assert_called_once_with("Bluetooth Headphones")
+
+
+# ── Display mode select entity ────────────────────────────────────────────────
+
+
+async def test_display_select_current_option(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """current_option reflects displayMode from player state."""
+    state = hass.states.get("select.kitchen_screen_display_mode")
+    assert state.state == "none"  # MOCK_MEDIA_STATE displayMode is "none"
+
+
+async def test_display_select_option_calls_api(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    entry, mock_client = setup_media_player
+    mock_client.async_media_set_display = AsyncMock(
+        return_value={"success": True, "displayMode": "fullscreen"}
+    )
+    await hass.services.async_call(
+        "select", "select_option",
+        {
+            "entity_id": "select.kitchen_screen_display_mode",
+            "option": "fullscreen",
+        },
+        blocking=True,
+    )
+    mock_client.async_media_set_display.assert_called_once_with("fullscreen")
+
+
+async def test_display_select_error_raises_home_assistant_error(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    from homeassistant.components.hubble.api import HubbleConnectionError
+    from homeassistant.exceptions import HomeAssistantError
+
+    entry, mock_client = setup_media_player
+    mock_client.async_media_set_display = AsyncMock(
+        side_effect=HubbleConnectionError("bad mode")
+    )
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            "select", "select_option",
+            {
+                "entity_id": "select.kitchen_screen_display_mode",
+                "option": "fullscreen",
+            },
+            blocking=True,
+        )
+
+
+# ── WS event flow: shared state ───────────────────────────────────────────────
+
+
+async def test_media_state_ws_event_updates_both_entities(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """media:state WS event updates both player and display select."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event(
+        "media:state",
+        {**MOCK_MEDIA_STATE, "state": "paused", "displayMode": "fullscreen"},
+    )
+    await hass.async_block_till_done()
+
+    player = hass.states.get("media_player.kitchen_screen_media_player")
+    display = hass.states.get("select.kitchen_screen_display_mode")
+    assert player.state == "paused"
+    assert display.state == "fullscreen"
+
+
+async def test_both_entities_share_dict_after_ws_recovery(
+    hass: HomeAssistant,
+) -> None:
+    """After recovery from None, both entities share the same coordinator.media_state dict."""
+    from . import MOCK_DASHBOARD_STATE, MOCK_DISCOVERY, MOCK_NOTIFY_COUNT
+    from homeassistant.components.hubble.api import HubbleConnectionError
+
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    with (
+        patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls,
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_start_websocket"
+        ),
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_stop_websocket"
+        ),
+    ):
+        mock_client = mock_cls.return_value
+        mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
+        mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
+        mock_client.async_discover = AsyncMock(return_value=MOCK_DISCOVERY)
+        mock_client.async_get_connector_state = AsyncMock(return_value={})
+        mock_client.async_media_get_state = AsyncMock(
+            side_effect=HubbleConnectionError("timeout")
+        )
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        coordinator = entry.runtime_data
+        # Simulate first WS event arriving after failed initial fetch
+        coordinator._handle_ws_event("media:state", dict(MOCK_MEDIA_STATE))
+        await hass.async_block_till_done()
+
+        player = hass.states.get("media_player.kitchen_screen_media_player")
+        display = hass.states.get("select.kitchen_screen_display_mode")
+        assert player.state == "playing"
+        assert display.state == "none"
