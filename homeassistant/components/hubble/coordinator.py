@@ -46,4 +46,4 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except HubbleAuthError as err:
             raise ConfigEntryAuthFailed from err
         except HubbleConnectionError as err:
-            raise UpdateFailed(f"Cannot connect to Hubble: {err}") from err
+            raise UpdateFailed(str(err)) from err
