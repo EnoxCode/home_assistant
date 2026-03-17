@@ -26,6 +26,14 @@
     }
   },
   "entity": {
+    "button": {
+      "next_page": {"name": "Next page"},
+      "previous_page": {"name": "Previous page"},
+      "next_widget": {"name": "Next widget"},
+      "previous_widget": {"name": "Previous widget"},
+      "dismiss_all_notifications": {"name": "Dismiss all notifications"},
+      "refresh_dashboard": {"name": "Refresh dashboard"}
+    },
     "sensor": {
       "current_page": {
         "name": "Current Page"

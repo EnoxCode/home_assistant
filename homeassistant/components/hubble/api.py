@@ -86,3 +86,95 @@ class HubbleApiClient:
             raise
         except aiohttp.ClientError as err:
             raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def _async_post(self, path: str, payload: dict | None = None) -> dict[str, Any]:
+        """POST to a Hubble endpoint and return the JSON response."""
+        url = f"{self._base_url}{path}"
+        try:
+            async with self._session.post(
+                url, headers=self._headers, json=payload or {}
+            ) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def _async_post_nullable(self, path: str) -> dict[str, Any] | None:
+        """POST to an endpoint that may return 204 (no content)."""
+        url = f"{self._base_url}{path}"
+        try:
+            async with self._session.post(url, headers=self._headers, json={}) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                if response.status == 204:
+                    return None
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def _async_delete(self, path: str) -> dict[str, Any]:
+        """DELETE a Hubble endpoint and return the JSON response.
+
+        Note: Hubble DELETE endpoints return HTTP 200 with a JSON body
+        (e.g. {"success": true}), not 204. response.json() is safe here.
+        """
+        url = f"{self._base_url}{path}"
+        try:
+            async with self._session.delete(url, headers=self._headers) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def async_next_page(self) -> dict[str, Any]:
+        """Advance to the next visible page."""
+        return await self._async_post("/api/dashboard/next-page")
+
+    async def async_previous_page(self) -> dict[str, Any]:
+        """Go to the previous visible page."""
+        return await self._async_post("/api/dashboard/previous-page")
+
+    async def async_next_widget(self) -> dict[str, Any] | None:
+        """Select the next widget. Returns None if no selectable widgets (HTTP 204)."""
+        return await self._async_post_nullable("/api/dashboard/widget/next")
+
+    async def async_previous_widget(self) -> dict[str, Any] | None:
+        """Select the previous widget. Returns None if no selectable widgets (HTTP 204)."""
+        return await self._async_post_nullable("/api/dashboard/widget/previous")
+
+    async def async_set_active_page(self, page_id: int) -> dict[str, Any]:
+        """Set the active page by ID."""
+        return await self._async_post("/api/dashboard/active-page", {"pageId": page_id})
+
+    async def async_dismiss_all_notifications(self) -> dict[str, Any]:
+        """Dismiss all active notifications."""
+        return await self._async_delete("/api/dashboard/notify")
+
+    async def async_refresh_dashboard(self) -> dict[str, Any]:
+        """Reload the Electron dashboard window."""
+        return await self._async_post("/api/dashboard/refresh")
+
+    async def async_send_notification(
+        self,
+        title: str,
+        message: str,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Send a notification overlay to the dashboard."""
+        payload = {"title": title, "message": message, **kwargs}
+        return await self._async_post("/api/dashboard/notify", payload)
+
+    async def async_dismiss_notification(self, notification_id: str) -> dict[str, Any]:
+        """Dismiss a single notification by UUID."""
+        return await self._async_delete(f"/api/dashboard/notify/{notification_id}")
