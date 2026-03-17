@@ -7,7 +7,7 @@ import pytest
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.core import HomeAssistant
 
-from . import MOCK_DASHBOARD_STATE, MOCK_MODULES, MOCK_NOTIFY_COUNT, MOCK_USER_INPUT
+from . import MOCK_DASHBOARD_STATE, MOCK_NOTIFY_COUNT, MOCK_USER_INPUT
 
 from tests.common import MockConfigEntry
 
@@ -51,7 +51,7 @@ async def setup_integration(hass: HomeAssistant):
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
         mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
-        mock_client.async_get_modules = AsyncMock(return_value=MOCK_MODULES)
+        mock_client.async_get_modules = AsyncMock(return_value=[])
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         yield entry

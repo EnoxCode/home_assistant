@@ -20,16 +20,47 @@ MOCK_DASHBOARD_STATE = {
     "selectedWidgetId": None,
 }
 
-MOCK_MODULES = [
-    {"id": 1, "name": "hubble-clock", "version": "0.2.0"},
-    {"id": 2, "name": "hubble-weather", "version": "1.0.0"},
-]
-
 MOCK_NOTIFY_COUNT = 2
 
-# Merged coordinator.data (what _async_update_data returns)
+# Merged coordinator.data (what _async_update_data returns — no "modules" key)
 MOCK_STATE = {
     **MOCK_DASHBOARD_STATE,
     "notificationCount": MOCK_NOTIFY_COUNT,
-    "modules": MOCK_MODULES,
+}
+
+# Discovery payload from GET /api/ws/events
+MOCK_DISCOVERY = {
+    "core": {
+        "events": [
+            {"event": "page:changed", "description": "Active page changed.", "payload": {}},
+            {"event": "notification", "description": "Notification pushed.", "payload": {}},
+            {
+                "event": "notification:dismissed",
+                "description": "Notification dismissed.",
+                "payload": {},
+            },
+        ]
+    },
+    "modules": [
+        {
+            "module": "hubble-clock",
+            "version": "0.2.0",
+            "description": "Clock widget.",
+            "events": [],
+            "endpoints": [],
+            "instances": [
+                {"widgetId": 1, "visualization": "digital", "config": {"slug": "clock-1"}}
+            ],
+        },
+        {
+            "module": "hubble-weather",
+            "version": "1.0.0",
+            "description": "Weather widget.",
+            "events": [],
+            "endpoints": [],
+            "instances": [
+                {"widgetId": 2, "visualization": "current", "config": {"slug": "weather-1"}}
+            ],
+        },
+    ],
 }
