@@ -54,6 +54,26 @@ _DISMISS_NOTIFICATION_SCHEMA = vol.Schema(
     }
 )
 
+_START_TIMER_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): selector.ConfigEntrySelector(
+            {"integration": "hubble"}
+        ),
+        vol.Required("slug"): cv.string,
+        vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+        vol.Optional("label"): cv.string,
+    }
+)
+
+_TIMER_SLUG_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): selector.ConfigEntrySelector(
+            {"integration": "hubble"}
+        ),
+        vol.Required("slug"): cv.string,
+    }
+)
+
 _OPTIONAL_FIELDS = frozenset({"level", "permanent", "timer", "image"})
 
 
@@ -102,6 +122,38 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             raise HomeAssistantError(str(err)) from err
         await coordinator.async_request_refresh()
 
+    async def handle_start_timer(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        try:
+            await coordinator.client.async_timer_start(
+                slug=call.data["slug"],
+                duration=call.data.get("duration"),
+                label=call.data.get("label"),
+            )
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def handle_pause_timer(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        try:
+            await coordinator.client.async_timer_pause(call.data["slug"])
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def handle_resume_timer(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        try:
+            await coordinator.client.async_timer_resume(call.data["slug"])
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def handle_reset_timer(call: ServiceCall) -> None:
+        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        try:
+            await coordinator.client.async_timer_reset(call.data["slug"])
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
     hass.services.async_register(
         "hubble",
         "send_notification",
@@ -114,6 +166,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         "dismiss_notification",
         handle_dismiss_notification,
         schema=_DISMISS_NOTIFICATION_SCHEMA,
+    )
+    hass.services.async_register(
+        "hubble", "start_timer", handle_start_timer, schema=_START_TIMER_SCHEMA
+    )
+    hass.services.async_register(
+        "hubble", "pause_timer", handle_pause_timer, schema=_TIMER_SLUG_SCHEMA
+    )
+    hass.services.async_register(
+        "hubble", "resume_timer", handle_resume_timer, schema=_TIMER_SLUG_SCHEMA
+    )
+    hass.services.async_register(
+        "hubble", "reset_timer", handle_reset_timer, schema=_TIMER_SLUG_SCHEMA
     )
     return True
 

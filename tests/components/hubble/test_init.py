@@ -5,6 +5,8 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from homeassistant.components.hubble.api import HubbleAuthError, HubbleConnectionError
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.config_entries import ConfigEntryState
@@ -81,7 +83,11 @@ async def test_discovery_stored_before_first_refresh(hass: HomeAssistant) -> Non
         patch(
             "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_stop_websocket"
         ),
-        patch.object(HubbleCoordinator, "async_config_entry_first_refresh", capturing_first_refresh),
+        patch.object(
+            HubbleCoordinator,
+            "async_config_entry_first_refresh",
+            capturing_first_refresh,
+        ),
     ):
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
@@ -144,3 +150,122 @@ async def test_async_stop_websocket_called_on_unload(hass: HomeAssistant) -> Non
         await hass.async_block_till_done()
 
     mock_stop.assert_called_once()
+
+
+# ── Timer services ─────────────────────────────────────────────────────────────
+
+
+async def test_start_timer_service_calls_api(hass: HomeAssistant) -> None:
+    """start_timer service calls async_timer_start with slug, duration, label."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    async with _setup_entry(hass, entry) as (mock_client, _, _):
+        mock_client.async_timer_start = AsyncMock(return_value={"ok": True})
+        await hass.services.async_call(
+            "hubble",
+            "start_timer",
+            {
+                "config_entry_id": entry.entry_id,
+                "slug": "timer-1",
+                "duration": 300,
+                "label": "Pasta",
+            },
+            blocking=True,
+        )
+
+    mock_client.async_timer_start.assert_called_once_with(
+        slug="timer-1", duration=300, label="Pasta"
+    )
+
+
+async def test_start_timer_service_stopwatch_mode(hass: HomeAssistant) -> None:
+    """start_timer service without duration passes duration=None (stopwatch)."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    async with _setup_entry(hass, entry) as (mock_client, _, _):
+        mock_client.async_timer_start = AsyncMock(return_value={"ok": True})
+        await hass.services.async_call(
+            "hubble",
+            "start_timer",
+            {"config_entry_id": entry.entry_id, "slug": "timer-1"},
+            blocking=True,
+        )
+
+    mock_client.async_timer_start.assert_called_once_with(
+        slug="timer-1", duration=None, label=None
+    )
+
+
+async def test_pause_timer_service_calls_api(hass: HomeAssistant) -> None:
+    """pause_timer service calls async_timer_pause with slug."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    async with _setup_entry(hass, entry) as (mock_client, _, _):
+        mock_client.async_timer_pause = AsyncMock(return_value={"ok": True})
+        await hass.services.async_call(
+            "hubble",
+            "pause_timer",
+            {"config_entry_id": entry.entry_id, "slug": "timer-1"},
+            blocking=True,
+        )
+
+    mock_client.async_timer_pause.assert_called_once_with("timer-1")
+
+
+async def test_resume_timer_service_calls_api(hass: HomeAssistant) -> None:
+    """resume_timer service calls async_timer_resume with slug."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    async with _setup_entry(hass, entry) as (mock_client, _, _):
+        mock_client.async_timer_resume = AsyncMock(return_value={"ok": True})
+        await hass.services.async_call(
+            "hubble",
+            "resume_timer",
+            {"config_entry_id": entry.entry_id, "slug": "timer-1"},
+            blocking=True,
+        )
+
+    mock_client.async_timer_resume.assert_called_once_with("timer-1")
+
+
+async def test_reset_timer_service_calls_api(hass: HomeAssistant) -> None:
+    """reset_timer service calls async_timer_reset with slug."""
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    async with _setup_entry(hass, entry) as (mock_client, _, _):
+        mock_client.async_timer_reset = AsyncMock(return_value={"ok": True})
+        await hass.services.async_call(
+            "hubble",
+            "reset_timer",
+            {"config_entry_id": entry.entry_id, "slug": "timer-1"},
+            blocking=True,
+        )
+
+    mock_client.async_timer_reset.assert_called_once_with("timer-1")
+
+
+async def test_timer_service_raises_ha_error_on_hubble_error(
+    hass: HomeAssistant,
+) -> None:
+    """Timer service raises HomeAssistantError when HubbleError is raised."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
+    entry.add_to_hass(hass)
+
+    async with _setup_entry(hass, entry) as (mock_client, _, _):
+        mock_client.async_timer_pause = AsyncMock(
+            side_effect=HubbleConnectionError("offline")
+        )
+        with pytest.raises(HomeAssistantError):
+            await hass.services.async_call(
+                "hubble",
+                "pause_timer",
+                {"config_entry_id": entry.entry_id, "slug": "timer-1"},
+                blocking=True,
+            )

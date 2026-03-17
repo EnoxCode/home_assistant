@@ -91,6 +91,70 @@
           "description": "UUID returned by the send_notification action."
         }
       }
+    },
+    "start_timer": {
+      "name": "Start timer",
+      "description": "Starts or restarts a Hubble timer widget.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Hubble instance",
+          "description": "The Hubble dashboard."
+        },
+        "slug": {
+          "name": "Slug",
+          "description": "Timer widget slug (e.g. timer-1)."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Duration in seconds. Omit for stopwatch mode."
+        },
+        "label": {
+          "name": "Label",
+          "description": "Display label for this timer run."
+        }
+      }
+    },
+    "pause_timer": {
+      "name": "Pause timer",
+      "description": "Pauses a running Hubble timer.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Hubble instance",
+          "description": "The Hubble dashboard."
+        },
+        "slug": {
+          "name": "Slug",
+          "description": "Timer widget slug."
+        }
+      }
+    },
+    "resume_timer": {
+      "name": "Resume timer",
+      "description": "Resumes a paused Hubble timer.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Hubble instance",
+          "description": "The Hubble dashboard."
+        },
+        "slug": {
+          "name": "Slug",
+          "description": "Timer widget slug."
+        }
+      }
+    },
+    "reset_timer": {
+      "name": "Reset timer",
+      "description": "Resets a Hubble timer to idle.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Hubble instance",
+          "description": "The Hubble dashboard."
+        },
+        "slug": {
+          "name": "Slug",
+          "description": "Timer widget slug."
+        }
+      }
     }
   },
   "selector": {
