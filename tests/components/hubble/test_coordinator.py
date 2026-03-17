@@ -6,11 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from homeassistant.components.hubble.coordinator import HubbleCoordinator
 from homeassistant.components.hubble.const import DOMAIN
+from homeassistant.components.hubble.coordinator import HubbleCoordinator
 from homeassistant.core import HomeAssistant
 
 from . import MOCK_DISCOVERY, MOCK_STATE, MOCK_USER_INPUT
+
 from tests.common import MockConfigEntry
 
 
@@ -67,7 +68,7 @@ async def test_page_changed_does_not_replace_pages_list(
 async def test_notification_increments_count(
     hass: HomeAssistant, coordinator: HubbleCoordinator
 ) -> None:
-    """notification event increments notificationCount by 1."""
+    """Notification event increments notificationCount by 1."""
     before = coordinator.data["notificationCount"]
     coordinator._handle_ws_event("notification", {"id": "abc", "title": "Alert"})
     assert coordinator.data["notificationCount"] == before + 1
@@ -175,6 +176,7 @@ async def test_ws_reconnect_loop_retries_on_connection_error(
 ) -> None:
     """_ws_reconnect_loop retries after HubbleConnectionError with backoff."""
     import asyncio
+
     from homeassistant.components.hubble.api import HubbleConnectionError
 
     call_count = 0
