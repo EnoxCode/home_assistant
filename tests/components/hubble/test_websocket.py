@@ -9,9 +9,13 @@ import aiohttp
 import pytest
 
 from homeassistant.components.hubble.api import HubbleAuthError, HubbleConnectionError
-from homeassistant.components.hubble.websocket import HubbleWebSocketClient
+from homeassistant.components.hubble.websocket import (
+    _DEFAULT_EVENTS,
+    HubbleWebSocketClient,
+)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _ws_message(msg_type: aiohttp.WSMsgType, data=None) -> aiohttp.WSMessage:
     """Build an aiohttp WSMessage."""
@@ -50,6 +54,7 @@ def _make_client(ws_mock=None, on_event=None):
 
 # ── async_connect ──────────────────────────────────────────────────────────────
 
+
 async def test_connect_sends_auth_and_subscribe() -> None:
     """async_connect sends auth message then subscribe message."""
     ws = MagicMock()
@@ -79,6 +84,7 @@ async def test_connect_sends_auth_and_subscribe() -> None:
         "page:changed",
         "notification",
         "notification:dismissed",
+        "media:state",
     }
 
 
@@ -125,21 +131,24 @@ async def test_connect_raises_connection_error_on_client_error() -> None:
 
 # ── async_listen ───────────────────────────────────────────────────────────────
 
+
 async def test_listen_dispatches_text_messages() -> None:
     """async_listen calls on_event for each TEXT message."""
     received = []
 
-    ws = _make_ws([
-        _ws_message(
-            aiohttp.WSMsgType.TEXT,
-            json.dumps({"event": "page:changed", "data": {"activePage": 2}}),
-        ),
-        _ws_message(
-            aiohttp.WSMsgType.TEXT,
-            json.dumps({"event": "notification", "data": {"id": "abc"}}),
-        ),
-        _ws_message(aiohttp.WSMsgType.CLOSED),
-    ])
+    ws = _make_ws(
+        [
+            _ws_message(
+                aiohttp.WSMsgType.TEXT,
+                json.dumps({"event": "page:changed", "data": {"activePage": 2}}),
+            ),
+            _ws_message(
+                aiohttp.WSMsgType.TEXT,
+                json.dumps({"event": "notification", "data": {"id": "abc"}}),
+            ),
+            _ws_message(aiohttp.WSMsgType.CLOSED),
+        ]
+    )
 
     client, _ = _make_client(ws_mock=ws, on_event=lambda e, d: received.append((e, d)))
 
@@ -194,6 +203,7 @@ async def test_listen_raises_on_ws_error() -> None:
 
 
 # ── async_add_subscription ─────────────────────────────────────────────────────
+
 
 async def test_add_subscription_sends_add_message() -> None:
     """async_add_subscription sends {"action": "add", ...} to the live connection."""
@@ -258,3 +268,8 @@ async def test_add_subscription_updates_internal_state() -> None:
         if json.loads(call[0][0]).get("action") == "subscribe"
     )
     assert "hubble-timer" in subscribe_call.get("modules", [])
+
+
+def test_default_events_includes_media_state() -> None:
+    """_DEFAULT_EVENTS must include 'media:state' for push-driven media player."""
+    assert "media:state" in _DEFAULT_EVENTS

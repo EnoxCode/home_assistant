@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # Core events subscribed to by default on every connection.
 _DEFAULT_EVENTS: frozenset[str] = frozenset(
-    {"page:changed", "notification", "notification:dismissed"}
+    {"page:changed", "notification", "notification:dismissed", "media:state"}
 )
 
 
@@ -58,9 +58,7 @@ class HubbleWebSocketClient:
                 raise HubbleAuthError(
                     "WebSocket handshake rejected: invalid API key"
                 ) from err
-            raise HubbleConnectionError(
-                f"WebSocket handshake failed: {err}"
-            ) from err
+            raise HubbleConnectionError(f"WebSocket handshake failed: {err}") from err
         except aiohttp.ClientError as err:
             raise HubbleConnectionError(
                 f"Cannot connect to Hubble WebSocket: {err}"
@@ -79,13 +77,9 @@ class HubbleWebSocketClient:
                 )
             auth_resp = json.loads(msg.data)
             if "error" in auth_resp:
-                raise HubbleAuthError(
-                    f"WebSocket auth rejected: {auth_resp['error']}"
-                )
+                raise HubbleAuthError(f"WebSocket auth rejected: {auth_resp['error']}")
             if not auth_resp.get("authenticated"):
-                raise HubbleConnectionError(
-                    f"Unexpected auth response: {auth_resp}"
-                )
+                raise HubbleConnectionError(f"Unexpected auth response: {auth_resp}")
             _auth_ok = True
         finally:
             if not _auth_ok:
@@ -93,9 +87,7 @@ class HubbleWebSocketClient:
                 self._ws = None
 
         # Subscribe using full accumulated subscription state
-        await self._ws.send_str(
-            json.dumps(self._build_action_message("subscribe"))
-        )
+        await self._ws.send_str(json.dumps(self._build_action_message("subscribe")))
 
     async def async_listen(self) -> None:
         """Receive loop. Returns on clean close. Raises HubbleConnectionError on error."""
@@ -110,9 +102,7 @@ class HubbleWebSocketClient:
                         "Received invalid JSON from Hubble WebSocket: %s", msg.data
                     )
                     continue
-                self._on_event(
-                    parsed.get("event", ""), parsed.get("data") or {}
-                )
+                self._on_event(parsed.get("event", ""), parsed.get("data") or {})
             elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSED):
                 break
             elif msg.type == WSMsgType.ERROR:
