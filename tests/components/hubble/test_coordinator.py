@@ -272,9 +272,8 @@ async def test_async_start_websocket_applies_pending_subs(
     ):
         await coordinator.async_start_websocket()
 
-    mock_ws_instance.async_add_subscription.assert_called_once_with(
-        modules=["hubble-timer"]
-    )
+    mock_ws_instance.async_add_subscription.assert_called_once()
+    assert set(mock_ws_instance.async_add_subscription.call_args.kwargs["modules"]) == {"hubble-timer"}
     # Clean up the background task
     coordinator._ws_reconnect_task.cancel()
 

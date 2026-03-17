@@ -162,6 +162,7 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self.ws_client.async_add_subscription(
                 modules=list(self._pending_module_subs)
             )
+            self._pending_module_subs.clear()
         self._ws_reconnect_task = self.hass.async_create_task(
             self._ws_reconnect_loop(),
             eager_start=False,
