@@ -87,6 +87,7 @@ class HubbleWebSocketClient:
                 self._ws = None
 
         # Subscribe using full accumulated subscription state
+        assert self._ws is not None  # auth succeeded, socket is open
         await self._ws.send_str(json.dumps(self._build_action_message("subscribe")))
 
     async def async_listen(self) -> None:

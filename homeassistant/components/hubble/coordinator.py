@@ -216,6 +216,7 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         HubbleConnectionError → retry after backoff.
         CancelledError → exit cleanly.
         """
+        assert self.ws_client is not None  # always set before this task starts
         backoff = 1
         while True:
             try:
