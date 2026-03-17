@@ -238,6 +238,23 @@ async def test_timer_sensor_initial_state_slug_mismatch_defaults_idle(
         assert state.state == "idle"
 
 
+async def test_timer_sensor_initial_state_resumed_without_started_no_finishes_at(
+    hass: HomeAssistant,
+) -> None:
+    """Connector-state with only timer:resumed (no timer:started) yields active state with no finishes_at.
+
+    _duration is None at init time, so finishes_at cannot be computed.
+    The sensor will resync on the next WS event.
+    """
+    connector_state = {
+        "timer:resumed": {"slug": "timer-1", "elapsed": 30.0},
+    }
+    async with _setup_with_timer(hass, connector_state=connector_state):
+        state = hass.states.get("sensor.kitchen_screen_timer_1")
+        assert state.state == "active"
+        assert "finishes_at" not in state.attributes
+
+
 # ── Timer sensor: WS event state transitions ──────────────────────────────────
 
 async def test_timer_started_event_sets_active_state(hass: HomeAssistant) -> None:

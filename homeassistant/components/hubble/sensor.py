@@ -304,6 +304,8 @@ class HubbleTimerSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
                     self._finishes_at = (
                         dt_util.utcnow() + timedelta(seconds=remaining)
                     ).isoformat()
+                else:
+                    self._finishes_at = None
             case "timer:finished":
                 self._state = "finished"
                 self._finishes_at = None
