@@ -222,6 +222,7 @@ async def test_add_subscription_sends_add_message() -> None:
 async def test_add_subscription_updates_internal_state() -> None:
     """async_add_subscription updates _subscriptions so reconnect replays it."""
     ws = MagicMock()
+    ws.closed = False
     ws.send_str = AsyncMock()
     ws.receive = AsyncMock(
         return_value=aiohttp.WSMessage(
