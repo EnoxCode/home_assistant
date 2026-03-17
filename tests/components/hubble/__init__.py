@@ -64,3 +64,25 @@ MOCK_DISCOVERY = {
         },
     ],
 }
+
+# Timer module instances for hubble-timer tests
+MOCK_TIMER_INSTANCES = [
+    {"widgetId": 10, "visualization": "countdown", "config": {"slug": "timer-1"}},
+    {"widgetId": 11, "visualization": "countdown", "config": {"slug": "timer-2"}},
+]
+
+# Discovery payload that includes hubble-timer
+MOCK_TIMER_DISCOVERY = {
+    **MOCK_DISCOVERY,
+    "modules": [
+        *MOCK_DISCOVERY["modules"],
+        {
+            "module": "hubble-timer",
+            "version": "1.2.3",
+            "description": "Cooking timer.",
+            "events": [],
+            "endpoints": [],
+            "instances": MOCK_TIMER_INSTANCES,
+        },
+    ],
+}

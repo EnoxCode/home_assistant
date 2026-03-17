@@ -62,6 +62,7 @@ async def setup_integration(hass: HomeAssistant):
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
         mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
         mock_client.async_discover = AsyncMock(return_value=MOCK_DISCOVERY)
+        mock_client.async_get_connector_state = AsyncMock(return_value={})
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         yield entry
