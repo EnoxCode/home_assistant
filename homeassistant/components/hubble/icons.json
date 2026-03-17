@@ -1,0 +1,9 @@
+{
+  "entity": {
+    "sensor": {
+      "current_page": {
+        "default": "mdi:book-open-page-variant"
+      }
+    }
+  }
+}
