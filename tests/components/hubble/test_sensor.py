@@ -2,8 +2,6 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from homeassistant.components.hubble.api import HubbleConnectionError
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.core import HomeAssistant
@@ -105,10 +103,11 @@ async def test_coordinator_fetches_all_endpoints(hass: HomeAssistant) -> None:
 
 
 async def test_module_count_sensor(hass: HomeAssistant, setup_integration) -> None:
-    """Module count sensor reports count and module names in attributes."""
+    """Module count sensor reports count and module names from discovery data."""
     state = hass.states.get("sensor.kitchen_screen_module_count")
     assert state is not None
     assert state.state == "2"
+    # Names come from m["module"] in discovery data, not m["name"]
     assert state.attributes["modules"] == ["hubble-clock", "hubble-weather"]
 
 
