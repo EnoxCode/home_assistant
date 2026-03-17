@@ -385,8 +385,8 @@ dismiss_notification:
 | `button.py` | New file — 6 button entities |
 | `select.py` | New file — `HubblePageSelectEntity` |
 | `services.yaml` | New file — service field selectors |
-| `strings.json` + `translations/en.json` | Add `"services"` top-level key; add all new entity names |
-| `icons.json` | Add service icons |
+| `strings.json` + `translations/en.json` | Add `"services"`, `"selector"`, `"exceptions"` top-level keys; add all new entity names |
+| `icons.json` | Add entity icons for new buttons/select/sensors; add service icons |
 
 ---
 

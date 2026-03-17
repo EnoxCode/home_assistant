@@ -1,5 +1,6 @@
 {
   "enabledPlugins": {
-    "superpowers@superpowers-dev": true
+    "superpowers@superpowers-dev": true,
+    "claude-md-management@claude-plugins-official": true
   }
 }

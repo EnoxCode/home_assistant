@@ -96,6 +96,48 @@
             },
             "name": "Dismiss notification"
         },
+        "pause_timer": {
+            "description": "Pauses a running Hubble timer.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug.",
+                    "name": "Slug"
+                }
+            },
+            "name": "Pause timer"
+        },
+        "reset_timer": {
+            "description": "Resets a Hubble timer to idle.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug.",
+                    "name": "Slug"
+                }
+            },
+            "name": "Reset timer"
+        },
+        "resume_timer": {
+            "description": "Resumes a paused Hubble timer.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug.",
+                    "name": "Slug"
+                }
+            },
+            "name": "Resume timer"
+        },
         "send_notification": {
             "description": "Sends a notification overlay to the Hubble dashboard.",
             "fields": {
@@ -137,10 +179,6 @@
                     "description": "The Hubble dashboard.",
                     "name": "Hubble instance"
                 },
-                "slug": {
-                    "description": "Timer widget slug (e.g. timer-1).",
-                    "name": "Slug"
-                },
                 "duration": {
                     "description": "Duration in seconds. Omit for stopwatch mode.",
                     "name": "Duration"
@@ -148,51 +186,13 @@
                 "label": {
                     "description": "Display label for this timer run.",
                     "name": "Label"
+                },
+                "slug": {
+                    "description": "Timer widget slug (e.g. timer-1).",
+                    "name": "Slug"
                 }
             },
             "name": "Start timer"
-        },
-        "pause_timer": {
-            "description": "Pauses a running Hubble timer.",
-            "fields": {
-                "config_entry_id": {
-                    "description": "The Hubble dashboard.",
-                    "name": "Hubble instance"
-                },
-                "slug": {
-                    "description": "Timer widget slug.",
-                    "name": "Slug"
-                }
-            },
-            "name": "Pause timer"
-        },
-        "resume_timer": {
-            "description": "Resumes a paused Hubble timer.",
-            "fields": {
-                "config_entry_id": {
-                    "description": "The Hubble dashboard.",
-                    "name": "Hubble instance"
-                },
-                "slug": {
-                    "description": "Timer widget slug.",
-                    "name": "Slug"
-                }
-            },
-            "name": "Resume timer"
-        },
-        "reset_timer": {
-            "description": "Resets a Hubble timer to idle.",
-            "fields": {
-                "config_entry_id": {
-                    "description": "The Hubble dashboard.",
-                    "name": "Hubble instance"
-                },
-                "slug": {
-                    "description": "Timer widget slug.",
-                    "name": "Slug"
-                }
-            },
-            "name": "Reset timer"
         }
     }
 }
