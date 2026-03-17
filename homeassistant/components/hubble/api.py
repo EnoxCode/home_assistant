@@ -62,7 +62,12 @@ class HubbleApiClient:
                     raise HubbleAuthError("Invalid API key")
                 response.raise_for_status()
                 data = await response.json()
-                return data["count"]
+                try:
+                    return data["count"]
+                except (KeyError, TypeError) as err:
+                    raise HubbleConnectionError(
+                        f"Unexpected notify/count response: {data}"
+                    ) from err
         except HubbleError:
             raise
         except aiohttp.ClientError as err:
@@ -70,7 +75,7 @@ class HubbleApiClient:
 
     async def async_get_modules(self) -> list[dict[str, Any]]:
         """Return the list of installed modules."""
-        url = f"{self._base_url}/api/modules/"
+        url = f"{self._base_url}/api/modules/"  # trailing slash required by Hubble API
         try:
             async with self._session.get(url, headers=self._headers) as response:
                 if response.status == 401:

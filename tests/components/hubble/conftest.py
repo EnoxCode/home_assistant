@@ -54,5 +54,4 @@ async def setup_integration(hass: HomeAssistant):
         mock_client.async_get_modules = AsyncMock(return_value=MOCK_MODULES)
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-
-    return entry
+        yield entry
