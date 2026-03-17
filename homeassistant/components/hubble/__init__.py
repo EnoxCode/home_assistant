@@ -12,12 +12,17 @@ from homeassistant.core import (
     ServiceResponse,
     SupportsResponse,
 )
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryNotReady,
+    HomeAssistantError,
+    ServiceValidationError,
+)
 from homeassistant.helpers import config_validation as cv, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
-from .api import HubbleApiClient, HubbleError
+from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError, HubbleError
 from .coordinator import HubbleConfigEntry, HubbleCoordinator
 
 PLATFORMS = [Platform.BUTTON, Platform.SELECT, Platform.SENSOR]
@@ -122,13 +127,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: HubbleConfigEntry) -> bo
         api_key=entry.data[CONF_API_KEY],
         session=session,
     )
+
+    # Discovery is required — determines which module entities to create.
+    try:
+        discovery = await client.async_discover()
+    except HubbleAuthError as err:
+        raise ConfigEntryAuthFailed from err
+    except HubbleConnectionError as err:
+        raise ConfigEntryNotReady(str(err)) from err
+
     coordinator = HubbleCoordinator(hass, entry, client)
+    coordinator.discovery = discovery
+
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+
+    # Forward platform setups before starting WebSocket so module platforms
+    # can register their handlers before any events arrive.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    await coordinator.async_start_websocket()
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: HubbleConfigEntry) -> bool:
     """Unload a Hubble config entry."""
+    coordinator: HubbleCoordinator = entry.runtime_data
+    await coordinator.async_stop_websocket()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
