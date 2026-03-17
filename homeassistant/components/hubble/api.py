@@ -87,7 +87,9 @@ class HubbleApiClient:
         except aiohttp.ClientError as err:
             raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
 
-    async def _async_post(self, path: str, payload: dict | None = None) -> dict[str, Any]:
+    async def _async_post(
+        self, path: str, payload: dict | None = None
+    ) -> dict[str, Any]:
         """POST to a Hubble endpoint and return the JSON response."""
         url = f"{self._base_url}{path}"
         try:
@@ -107,7 +109,9 @@ class HubbleApiClient:
         """POST to an endpoint that may return 204 (no content)."""
         url = f"{self._base_url}{path}"
         try:
-            async with self._session.post(url, headers=self._headers, json={}) as response:
+            async with self._session.post(
+                url, headers=self._headers, json={}
+            ) as response:
                 if response.status == 401:
                     raise HubbleAuthError("Invalid API key")
                 if response.status == 204:

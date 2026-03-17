@@ -22,11 +22,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up Hubble sensors from a config entry."""
     coordinator: HubbleCoordinator = entry.runtime_data
-    async_add_entities([
-        HubbleCurrentPageSensor(coordinator, entry),
-        HubbleModuleCountSensor(coordinator, entry),
-        HubbleNotificationCountSensor(coordinator, entry),
-    ])
+    async_add_entities(
+        [
+            HubbleCurrentPageSensor(coordinator, entry),
+            HubbleModuleCountSensor(coordinator, entry),
+            HubbleNotificationCountSensor(coordinator, entry),
+        ]
+    )
 
 
 def _device_info(entry: HubbleConfigEntry) -> DeviceInfo:

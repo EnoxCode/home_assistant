@@ -6,7 +6,12 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT, Platform
-from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -19,28 +24,30 @@ PLATFORMS = [Platform.BUTTON, Platform.SELECT, Platform.SENSOR]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema("hubble")
 
-_SEND_NOTIFICATION_SCHEMA = vol.Schema({
-    vol.Required("config_entry_id"): selector.ConfigEntrySelector(
-        {"integration": "hubble"}
-    ),
-    vol.Required("title"): cv.string,
-    vol.Required("message"): cv.string,
-    vol.Optional("level"): vol.In(
-        ["info", "warning", "error", "critical"]
-    ),
-    vol.Exclusive("permanent", "persistence_mode"): cv.boolean,
-    vol.Exclusive("timer", "persistence_mode"): vol.All(
-        vol.Coerce(int), vol.Range(min=1)
-    ),
-    vol.Optional("image"): cv.string,
-})
+_SEND_NOTIFICATION_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): selector.ConfigEntrySelector(
+            {"integration": "hubble"}
+        ),
+        vol.Required("title"): cv.string,
+        vol.Required("message"): cv.string,
+        vol.Optional("level"): vol.In(["info", "warning", "error", "critical"]),
+        vol.Exclusive("permanent", "persistence_mode"): cv.boolean,
+        vol.Exclusive("timer", "persistence_mode"): vol.All(
+            vol.Coerce(int), vol.Range(min=1)
+        ),
+        vol.Optional("image"): cv.string,
+    }
+)
 
-_DISMISS_NOTIFICATION_SCHEMA = vol.Schema({
-    vol.Required("config_entry_id"): selector.ConfigEntrySelector(
-        {"integration": "hubble"}
-    ),
-    vol.Required("notification_id"): cv.string,
-})
+_DISMISS_NOTIFICATION_SCHEMA = vol.Schema(
+    {
+        vol.Required("config_entry_id"): selector.ConfigEntrySelector(
+            {"integration": "hubble"}
+        ),
+        vol.Required("notification_id"): cv.string,
+    }
+)
 
 _OPTIONAL_FIELDS = frozenset({"level", "permanent", "timer", "image"})
 
