@@ -1,9 +1,24 @@
 {
   "entity": {
+    "button": {
+      "next_page": {"default": "mdi:chevron-right"},
+      "previous_page": {"default": "mdi:chevron-left"},
+      "next_widget": {"default": "mdi:arrow-right-circle"},
+      "previous_widget": {"default": "mdi:arrow-left-circle"},
+      "dismiss_all_notifications": {"default": "mdi:bell-off"},
+      "refresh_dashboard": {"default": "mdi:refresh"}
+    },
+    "select": {
+      "active_page": {"default": "mdi:book-open-page-variant"}
+    },
     "sensor": {
-      "current_page": {
-        "default": "mdi:book-open-page-variant"
-      }
+      "current_page": {"default": "mdi:book-open-page-variant"},
+      "module_count": {"default": "mdi:puzzle"},
+      "notification_count": {"default": "mdi:bell-badge"}
     }
+  },
+  "services": {
+    "send_notification": {"service": "mdi:bell-plus"},
+    "dismiss_notification": {"service": "mdi:bell-remove"}
   }
 }

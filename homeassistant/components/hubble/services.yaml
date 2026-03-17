@@ -1,0 +1,48 @@
+send_notification:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: hubble
+    title:
+      required: true
+      selector:
+        text: {}
+    message:
+      required: true
+      selector:
+        text:
+          multiline: true
+    level:
+      selector:
+        select:
+          translation_key: notification_level
+          options:
+            - info
+            - warning
+            - error
+            - critical
+    permanent:
+      selector:
+        boolean: {}
+    timer:
+      selector:
+        number:
+          min: 1
+          mode: box
+    image:
+      selector:
+        text: {}
+
+dismiss_notification:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: hubble
+    notification_id:
+      required: true
+      selector:
+        text: {}

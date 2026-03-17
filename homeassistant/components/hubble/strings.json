@@ -25,14 +25,6 @@
       "reauth_successful": "Re-authentication successful"
     }
   },
-  "exceptions": {
-    "config_entry_not_found": {
-      "message": "Config entry not found."
-    },
-    "config_entry_not_loaded": {
-      "message": "Hubble integration is not loaded."
-    }
-  },
   "entity": {
     "button": {
       "next_page": {"name": "Next page"},
@@ -43,20 +35,76 @@
       "refresh_dashboard": {"name": "Refresh dashboard"}
     },
     "select": {
-      "active_page": {
-        "name": "Active Page"
-      }
+      "active_page": {"name": "Active page"}
     },
     "sensor": {
-      "current_page": {
-        "name": "Current Page"
-      },
-      "module_count": {
-        "name": "Module Count"
-      },
-      "notification_count": {
-        "name": "Notification Count"
+      "current_page": {"name": "Current page"},
+      "module_count": {"name": "Module count"},
+      "notification_count": {"name": "Notification count"}
+    }
+  },
+  "services": {
+    "send_notification": {
+      "name": "Send notification",
+      "description": "Sends a notification overlay to the Hubble dashboard.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Hubble instance",
+          "description": "The Hubble dashboard to send the notification to."
+        },
+        "title": {
+          "name": "Title",
+          "description": "Short heading displayed at the top of the notification."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Body text. Supports **bold**, *italic*, and `code` markdown."
+        },
+        "level": {
+          "name": "Level",
+          "description": "Severity level. Determines card colour and icon."
+        },
+        "permanent": {
+          "name": "Permanent",
+          "description": "If true, notification stays until dismissed. Mutually exclusive with timer."
+        },
+        "timer": {
+          "name": "Timer",
+          "description": "Seconds until auto-dismiss. Mutually exclusive with permanent."
+        },
+        "image": {
+          "name": "Image",
+          "description": "Optional image URL or base64 data URI."
+        }
+      }
+    },
+    "dismiss_notification": {
+      "name": "Dismiss notification",
+      "description": "Dismisses a single active notification by its ID.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Hubble instance",
+          "description": "The Hubble dashboard to dismiss the notification on."
+        },
+        "notification_id": {
+          "name": "Notification ID",
+          "description": "UUID returned by the send_notification action."
+        }
       }
     }
+  },
+  "selector": {
+    "notification_level": {
+      "options": {
+        "info": "Info",
+        "warning": "Warning",
+        "error": "Error",
+        "critical": "Critical"
+      }
+    }
+  },
+  "exceptions": {
+    "config_entry_not_found": {"message": "Config entry not found."},
+    "config_entry_not_loaded": {"message": "Hubble integration is not loaded."}
   }
 }
