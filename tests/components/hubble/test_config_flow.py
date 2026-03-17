@@ -1,7 +1,5 @@
 """Tests for the Hubble config flow."""
 
-from unittest.mock import AsyncMock, patch
-
 import pytest
 
 from homeassistant.components.hubble.api import HubbleAuthError, HubbleConnectionError
@@ -11,7 +9,7 @@ from homeassistant.const import CONF_API_KEY
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from . import MOCK_STATE, MOCK_USER_INPUT
+from . import MOCK_USER_INPUT
 
 
 async def test_user_flow_success(hass: HomeAssistant, mock_hubble_client) -> None:
@@ -22,16 +20,9 @@ async def test_user_flow_success(hass: HomeAssistant, mock_hubble_client) -> Non
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    with patch(
-        "homeassistant.components.hubble.HubbleCoordinator"
-    ) as mock_coordinator_cls:
-        mock_coordinator = mock_coordinator_cls.return_value
-        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
-        mock_coordinator.data = MOCK_STATE
-
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=MOCK_USER_INPUT
-        )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input=MOCK_USER_INPUT
+    )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Hubble (kitchen-screen:3000)"
