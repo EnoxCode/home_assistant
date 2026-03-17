@@ -379,3 +379,88 @@ async def test_async_media_play_omits_none_optional_fields(client) -> None:
     assert "contentType" not in body
     assert "title" not in body
     assert "artist" not in body
+
+
+# ── Volume / display / source ────────────────────────────────────────────────
+
+
+async def test_async_media_set_volume_level(client) -> None:
+    """Test async_media_set_volume_level POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response(
+            {"success": True, "volumeLevel": 0.5, "isVolumeMuted": False}
+        )
+    )
+    await client.async_media_set_volume_level(0.5)
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"] == {"level": 0.5}
+    assert (
+        "http://kitchen-screen:3000/api/media-player/volume"
+        in client._session.post.call_args[0][0]
+    )
+
+
+async def test_async_media_mute_volume(client) -> None:
+    """Test async_media_mute_volume POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response(
+            {"success": True, "volumeLevel": 0.5, "isVolumeMuted": True}
+        )
+    )
+    await client.async_media_mute_volume(True)
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"] == {"mute": True}
+
+
+async def test_async_media_volume_step_up(client) -> None:
+    """Test async_media_volume_step('up') POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response(
+            {"success": True, "volumeLevel": 0.8, "isVolumeMuted": False}
+        )
+    )
+    await client.async_media_volume_step("up")
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"] == {"step": "up"}
+
+
+async def test_async_media_volume_step_down(client) -> None:
+    """Test async_media_volume_step('down') POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response(
+            {"success": True, "volumeLevel": 0.6, "isVolumeMuted": False}
+        )
+    )
+    await client.async_media_volume_step("down")
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"] == {"step": "down"}
+
+
+async def test_async_media_set_display(client) -> None:
+    """Test async_media_set_display POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True, "displayMode": "fullscreen"})
+    )
+    await client.async_media_set_display("fullscreen")
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"] == {"mode": "fullscreen"}
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/display",
+        headers={"x-api-key": "test-api-key"},
+        json={"mode": "fullscreen"},
+    )
+
+
+async def test_async_media_set_source(client) -> None:
+    """Test async_media_set_source POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True, "source": "hdmi"})
+    )
+    await client.async_media_set_source("hdmi")
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"] == {"source": "hdmi"}
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/source",
+        headers={"x-api-key": "test-api-key"},
+        json={"source": "hdmi"},
+    )

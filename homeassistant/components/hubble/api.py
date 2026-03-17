@@ -294,3 +294,23 @@ class HubbleApiClient:
     async def async_media_turn_off(self) -> dict[str, Any]:
         """POST /api/media-player/turn-off."""
         return await self._async_post("/api/media-player/turn-off")
+
+    async def async_media_set_volume_level(self, level: float) -> dict[str, Any]:
+        """POST /api/media-player/volume with {"level": level}."""
+        return await self._async_post("/api/media-player/volume", {"level": level})
+
+    async def async_media_mute_volume(self, mute: bool) -> dict[str, Any]:
+        """POST /api/media-player/volume with {"mute": mute}."""
+        return await self._async_post("/api/media-player/volume", {"mute": mute})
+
+    async def async_media_volume_step(self, direction: str) -> dict[str, Any]:
+        """POST /api/media-player/volume with {"step": "up" | "down"}."""
+        return await self._async_post("/api/media-player/volume", {"step": direction})
+
+    async def async_media_set_display(self, mode: str) -> dict[str, Any]:
+        """POST /api/media-player/display with {"mode": mode}."""
+        return await self._async_post("/api/media-player/display", {"mode": mode})
+
+    async def async_media_set_source(self, source_id: str) -> dict[str, Any]:
+        """POST /api/media-player/source with {"source": source_id}."""
+        return await self._async_post("/api/media-player/source", {"source": source_id})
