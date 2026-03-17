@@ -4,31 +4,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from homeassistant.components.hubble.api import HubbleConnectionError
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.core import HomeAssistant
 
-from . import MOCK_STATE, MOCK_USER_INPUT
+from . import MOCK_DASHBOARD_STATE, MOCK_MODULES, MOCK_NOTIFY_COUNT, MOCK_STATE, MOCK_USER_INPUT
 
 from tests.common import MockConfigEntry
-
-
-@pytest.fixture
-async def setup_integration(hass: HomeAssistant):
-    """Set up the Hubble integration with a mocked coordinator."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data=MOCK_USER_INPUT,
-        title="Kitchen Screen",
-    )
-    entry.add_to_hass(hass)
-
-    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_client_cls:
-        mock_client = mock_client_cls.return_value
-        mock_client.async_get_state = AsyncMock(return_value=MOCK_STATE)
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-    return entry
 
 
 async def test_sensor_state(hass: HomeAssistant, setup_integration) -> None:
@@ -49,14 +31,17 @@ async def test_sensor_unavailable_no_data(hass: HomeAssistant) -> None:
     )
     entry.add_to_hass(hass)
 
-    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_client_cls:
-        mock_client = mock_client_cls.return_value
-        mock_client.async_get_state = AsyncMock(side_effect=Exception("boom"))
+    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls:
+        mock_client = mock_cls.return_value
+        mock_client.async_get_state = AsyncMock(
+            side_effect=HubbleConnectionError("boom")
+        )
+        mock_client.async_get_notify_count = AsyncMock(return_value=0)
+        mock_client.async_get_modules = AsyncMock(return_value=[])
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
     state = hass.states.get("sensor.kitchen_screen_current_page")
-    # Entry won't load when first refresh fails — sensor won't exist
     assert state is None
 
 
@@ -74,3 +59,30 @@ async def test_sensor_unavailable_page_not_found(
     state = hass.states.get("sensor.kitchen_screen_current_page")
     assert state is not None
     assert state.state == "unavailable"
+
+
+async def test_coordinator_fetches_all_endpoints(hass: HomeAssistant) -> None:
+    """Coordinator calls all three API methods and merges results."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=MOCK_USER_INPUT,
+        title="Kitchen Screen",
+    )
+    entry.add_to_hass(hass)
+
+    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls:
+        mock_client = mock_cls.return_value
+        mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
+        mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
+        mock_client.async_get_modules = AsyncMock(return_value=MOCK_MODULES)
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    mock_client.async_get_state.assert_called_once()
+    mock_client.async_get_notify_count.assert_called_once()
+    mock_client.async_get_modules.assert_called_once()
+
+    data = entry.runtime_data.data
+    assert data["notificationCount"] == MOCK_NOTIFY_COUNT
+    assert data["modules"] == MOCK_MODULES
+    assert data["activePage"] == 1

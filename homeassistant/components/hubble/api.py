@@ -52,3 +52,32 @@ class HubbleApiClient:
             raise
         except aiohttp.ClientError as err:
             raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def async_get_notify_count(self) -> int:
+        """Return the number of currently active notifications."""
+        url = f"{self._base_url}/api/dashboard/notify/count"
+        try:
+            async with self._session.get(url, headers=self._headers) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                data = await response.json()
+                return data["count"]
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def async_get_modules(self) -> list[dict[str, Any]]:
+        """Return the list of installed modules."""
+        url = f"{self._base_url}/api/modules/"
+        try:
+            async with self._session.get(url, headers=self._headers) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
