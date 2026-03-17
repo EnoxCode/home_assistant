@@ -12,6 +12,7 @@ from homeassistant.components.media_player import (
     MediaPlayerState,
     MediaType,
 )
+from homeassistant.components import media_source
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -292,6 +293,13 @@ class HubbleMediaPlayer(MediaPlayerEntity):
         announce: bool = kwargs.get("announce", False)
         extra: dict[str, Any] = kwargs.get(ATTR_MEDIA_EXTRA, {})
         content_type = _MEDIA_TYPE_MAP.get(str(media_type))
+
+        if media_source.is_media_source_id(media_id):
+            sourced = await media_source.async_resolve_media(
+                self.hass, media_id, self.entity_id
+            )
+            media_id = sourced.url
+
         try:
             await self.coordinator.client.async_media_play(
                 url=media_id,
