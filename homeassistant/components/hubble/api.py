@@ -87,20 +87,6 @@ class HubbleApiClient:
         except aiohttp.ClientError as err:
             raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
 
-    async def async_get_modules(self) -> list[dict[str, Any]]:
-        """Return the list of installed modules."""
-        url = f"{self._base_url}/api/modules/"  # trailing slash required by Hubble API
-        try:
-            async with self._session.get(url, headers=self._headers) as response:
-                if response.status == 401:
-                    raise HubbleAuthError("Invalid API key")
-                response.raise_for_status()
-                return await response.json()
-        except HubbleError:
-            raise
-        except aiohttp.ClientError as err:
-            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
-
     async def _async_post(
         self, path: str, payload: dict | None = None
     ) -> dict[str, Any]:

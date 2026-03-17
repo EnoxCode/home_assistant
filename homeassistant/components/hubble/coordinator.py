@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+import contextlib
 import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError
 from .const import DOMAIN, SCAN_INTERVAL
+from .websocket import HubbleWebSocketClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,17 +44,147 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=SCAN_INTERVAL,
         )
         self.client = client
+        # Set by async_setup_entry before first refresh.
+        self.discovery: dict[str, Any] = {}
+        # WebSocket client and reconnect task.
+        self.ws_client: HubbleWebSocketClient | None = None
+        self._ws_reconnect_task: asyncio.Task | None = None
+        # Module event handlers: (module_name, topic) -> handler.
+        self._module_handlers: dict[
+            tuple[str, str], Callable[[dict[str, Any]], None]
+        ] = {}
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch latest state from all Hubble endpoints."""
+        """Fetch latest state from Hubble REST endpoints (fallback resync)."""
         try:
-            state, notify_count, modules = await asyncio.gather(
+            state, notify_count = await asyncio.gather(
                 self.client.async_get_state(),
                 self.client.async_get_notify_count(),
-                self.client.async_get_modules(),
             )
         except HubbleAuthError as err:
             raise ConfigEntryAuthFailed from err
         except HubbleConnectionError as err:
             raise UpdateFailed(str(err)) from err
-        return {**state, "notificationCount": notify_count, "modules": modules}
+        return {**state, "notificationCount": notify_count}
+
+    # ── Module infrastructure ───────────────────────────────────────────────────
+
+    def is_module_discovered(self, module_name: str) -> bool:
+        """Return True if module_name is present in discovery data."""
+        return any(
+            m["module"] == module_name
+            for m in self.discovery.get("modules", [])
+        )
+
+    def register_module_handler(
+        self,
+        module_name: str,
+        topic: str,
+        handler: Callable[[dict[str, Any]], None],
+    ) -> None:
+        """Register a callback for a specific module:data event.
+
+        Future module platforms (e.g. hubble-timer) call this in their
+        async_setup_entry after verifying is_module_discovered().
+        """
+        self._module_handlers[(module_name, topic)] = handler
+
+    # ── WebSocket event routing ─────────────────────────────────────────────────
+
+    def _handle_ws_event(self, event: str, data: dict[str, Any]) -> None:
+        """Route an incoming WebSocket event to the correct handler."""
+        if event == "module:data":
+            module = data.get("module", "")
+            topic = data.get("topic", "")
+            handler = self._module_handlers.get((module, topic))
+            if handler:
+                handler(data.get("data") or {})
+            else:
+                _LOGGER.debug(
+                    "Unhandled module:data event: %s:%s", module, topic
+                )
+            return
+
+        # Core events — patch coordinator data in place.
+        current = dict(self.data) if self.data else {}
+        match event:
+            case "page:changed":
+                # Only update activePage and widgets.
+                # Do NOT replace the pages list — the WS payload only sends a
+                # single page object, not the full list. Replacing pages would
+                # break HubbleCurrentPageSensor which iterates coordinator.data["pages"].
+                current["activePage"] = data.get(
+                    "activePage", current.get("activePage")
+                )
+                if "widgets" in data:
+                    current["widgets"] = data["widgets"]
+            case "notification":
+                current["notificationCount"] = (
+                    current.get("notificationCount", 0) + 1
+                )
+            case "notification:dismissed":
+                current["notificationCount"] = max(
+                    0, current.get("notificationCount", 0) - 1
+                )
+            case _:
+                _LOGGER.debug("Unhandled core WebSocket event: %s", event)
+                return
+        self.async_set_updated_data(current)
+
+    # ── WebSocket lifecycle ─────────────────────────────────────────────────────
+
+    async def async_start_websocket(self) -> None:
+        """Create WebSocket client and start the reconnect loop."""
+        self.ws_client = HubbleWebSocketClient(
+            host=self.config_entry.data[CONF_HOST],
+            port=self.config_entry.data[CONF_PORT],
+            api_key=self.config_entry.data[CONF_API_KEY],
+            session=async_get_clientsession(self.hass),
+            on_event=self._handle_ws_event,
+        )
+        self._ws_reconnect_task = self.hass.async_create_task(
+            self._ws_reconnect_loop(),
+            eager_start=False,
+        )
+
+    async def async_stop_websocket(self) -> None:
+        """Cancel reconnect task and close WebSocket connection.
+
+        Shutdown sequence:
+          1. Cancel the reconnect task.
+          2. Await it so CancelledError propagates cleanly.
+          3. Disconnect the underlying ws connection.
+        """
+        if self._ws_reconnect_task is not None:
+            self._ws_reconnect_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._ws_reconnect_task
+            self._ws_reconnect_task = None
+        if self.ws_client is not None:
+            await self.ws_client.async_disconnect()
+            self.ws_client = None
+
+    async def _ws_reconnect_loop(self) -> None:
+        """Connect and listen. Retry with exponential backoff on failure.
+
+        Clean close (listen returns normally) → reconnect after backoff.
+        HubbleAuthError → trigger re-auth and exit — do not retry.
+        HubbleConnectionError → retry after backoff.
+        CancelledError → exit cleanly.
+        """
+        backoff = 1
+        while True:
+            try:
+                await self.ws_client.async_connect()
+                backoff = 1  # reset on successful connect
+                await self.ws_client.async_listen()
+                # listen returned normally (clean close) — fall through to reconnect
+            except HubbleAuthError:
+                self.config_entry.async_start_reauth(self.hass)
+                return
+            except HubbleConnectionError:
+                pass  # retry after backoff
+            except asyncio.CancelledError:
+                return
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 60)

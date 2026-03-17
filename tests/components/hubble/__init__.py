@@ -64,7 +64,3 @@ MOCK_DISCOVERY = {
         },
     ],
 }
-
-# Temporary alias — test_sensor.py and test_services.py import this;
-# proper refactoring happens in Task 3.
-MOCK_MODULES = []

@@ -8,7 +8,7 @@ from homeassistant.components.hubble.api import HubbleConnectionError
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.core import HomeAssistant
 
-from . import MOCK_DASHBOARD_STATE, MOCK_MODULES, MOCK_NOTIFY_COUNT, MOCK_STATE, MOCK_USER_INPUT
+from . import MOCK_DASHBOARD_STATE, MOCK_NOTIFY_COUNT, MOCK_STATE, MOCK_USER_INPUT
 
 from tests.common import MockConfigEntry
 
@@ -31,13 +31,21 @@ async def test_sensor_unavailable_no_data(hass: HomeAssistant) -> None:
     )
     entry.add_to_hass(hass)
 
-    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls:
+    with (
+        patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls,
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_start_websocket"
+        ),
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_stop_websocket"
+        ),
+    ):
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(
             side_effect=HubbleConnectionError("boom")
         )
         mock_client.async_get_notify_count = AsyncMock(return_value=0)
-        mock_client.async_get_modules = AsyncMock(return_value=[])
+        mock_client.async_discover = AsyncMock(return_value={"core": {"events": []}, "modules": []})
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -62,7 +70,7 @@ async def test_sensor_unavailable_page_not_found(
 
 
 async def test_coordinator_fetches_all_endpoints(hass: HomeAssistant) -> None:
-    """Coordinator calls all three API methods and merges results."""
+    """Coordinator calls state and notify_count endpoints and merges results."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=MOCK_USER_INPUT,
@@ -70,22 +78,30 @@ async def test_coordinator_fetches_all_endpoints(hass: HomeAssistant) -> None:
     )
     entry.add_to_hass(hass)
 
-    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls:
+    with (
+        patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls,
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_start_websocket"
+        ),
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_stop_websocket"
+        ),
+    ):
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
         mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
-        mock_client.async_get_modules = AsyncMock(return_value=MOCK_MODULES)
+        mock_client.async_discover = AsyncMock(return_value={"core": {"events": []}, "modules": []})
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
     mock_client.async_get_state.assert_called_once()
     mock_client.async_get_notify_count.assert_called_once()
-    mock_client.async_get_modules.assert_called_once()
 
     data = entry.runtime_data.data
     assert data["notificationCount"] == MOCK_NOTIFY_COUNT
-    assert data["modules"] == MOCK_MODULES
     assert data["activePage"] == 1
+    # "modules" key is no longer in coordinator.data — it lives in coordinator.discovery
+    assert "modules" not in data
 
 
 async def test_module_count_sensor(hass: HomeAssistant, setup_integration) -> None:

@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 
 from homeassistant.components.hubble.const import DOMAIN
 
-from . import MOCK_DASHBOARD_STATE, MOCK_MODULES, MOCK_NOTIFY_COUNT, MOCK_USER_INPUT
+from . import MOCK_DASHBOARD_STATE, MOCK_DISCOVERY, MOCK_NOTIFY_COUNT, MOCK_USER_INPUT
 from tests.common import MockConfigEntry
 
 
@@ -100,11 +100,19 @@ async def test_send_notification_entry_not_found(hass: HomeAssistant) -> None:
     entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
     entry.add_to_hass(hass)
 
-    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls:
+    with (
+        patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls,
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_start_websocket"
+        ),
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_stop_websocket"
+        ),
+    ):
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
         mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
-        mock_client.async_get_modules = AsyncMock(return_value=MOCK_MODULES)
+        mock_client.async_discover = AsyncMock(return_value=MOCK_DISCOVERY)
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -128,11 +136,19 @@ async def test_send_notification_entry_not_loaded(hass: HomeAssistant) -> None:
         domain=DOMAIN, data=MOCK_USER_INPUT, title="Other Screen"
     )
     other_entry.add_to_hass(hass)
-    with patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls:
+    with (
+        patch("homeassistant.components.hubble.HubbleApiClient") as mock_cls,
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_start_websocket"
+        ),
+        patch(
+            "homeassistant.components.hubble.coordinator.HubbleCoordinator.async_stop_websocket"
+        ),
+    ):
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
         mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
-        mock_client.async_get_modules = AsyncMock(return_value=MOCK_MODULES)
+        mock_client.async_discover = AsyncMock(return_value=MOCK_DISCOVERY)
         await hass.config_entries.async_setup(other_entry.entry_id)
         await hass.async_block_till_done()
 
