@@ -7,6 +7,7 @@ from typing import Any
 
 from homeassistant.components.media_player import (
     ATTR_MEDIA_EXTRA,
+    BrowseMedia,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
@@ -95,6 +96,7 @@ class HubbleMediaPlayer(MediaPlayerEntity):
         | MediaPlayerEntityFeature.TURN_OFF
         | MediaPlayerEntityFeature.PLAY_MEDIA
         | MediaPlayerEntityFeature.MEDIA_ANNOUNCE
+        | MediaPlayerEntityFeature.BROWSE_MEDIA
     )
 
     def __init__(self, coordinator, entry: HubbleConfigEntry) -> None:
@@ -328,6 +330,16 @@ class HubbleMediaPlayer(MediaPlayerEntity):
             await self.coordinator.client.async_media_set_source(source_id)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+
+    async def async_browse_media(
+        self, media_content_type: str | None = None, media_content_id: str | None = None
+    ) -> BrowseMedia:
+        """Expose HA media sources for browsing."""
+        return await media_source.async_browse_media(
+            self.hass,
+            media_content_id,
+            supported_media_types=None,
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up stored reference when entity is removed."""
