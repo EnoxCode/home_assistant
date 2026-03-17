@@ -11,7 +11,7 @@ from homeassistant.components.hubble.api import (
     HubbleConnectionError,
 )
 
-from . import MOCK_DISCOVERY
+from . import MOCK_DISCOVERY, MOCK_MEDIA_STATE
 
 
 @pytest.fixture
@@ -196,3 +196,54 @@ async def test_async_timer_action_raises_connection_error(client) -> None:
 
     with pytest.raises(HubbleConnectionError):
         await client.async_timer_reset("timer-1")
+
+
+# ── async_media_get_state ────────────────────────────────────────────────────
+
+
+async def test_async_media_get_state_returns_payload(client) -> None:
+    """async_media_get_state returns parsed JSON without sending auth header."""
+    mock_response = MagicMock()
+    mock_response.status = 200
+    mock_response.json = AsyncMock(return_value=MOCK_MEDIA_STATE)
+    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_response.__aexit__ = AsyncMock(return_value=False)
+    client._session.get = MagicMock(return_value=mock_response)
+
+    result = await client.async_media_get_state()
+
+    assert result == MOCK_MEDIA_STATE
+    # Must NOT send the x-api-key header
+    client._session.get.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/state"
+    )
+
+
+async def test_async_media_get_state_raises_connection_error_on_401(client) -> None:
+    """async_media_get_state raises HubbleConnectionError on 401 (not auth error).
+
+    No auth header is sent, so a 401 indicates server misconfiguration —
+    not an invalid key. Raising HubbleAuthError would incorrectly trigger re-auth.
+    """
+    mock_response = MagicMock()
+    mock_response.status = 200
+    mock_response.raise_for_status = MagicMock(
+        side_effect=aiohttp.ClientResponseError(None, None, status=401)
+    )
+    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_response.__aexit__ = AsyncMock(return_value=False)
+    client._session.get = MagicMock(return_value=mock_response)
+
+    with pytest.raises(HubbleConnectionError):
+        await client.async_media_get_state()
+
+
+async def test_async_media_get_state_raises_connection_error_on_network_failure(
+    client,
+) -> None:
+    """async_media_get_state raises HubbleConnectionError on aiohttp.ClientError."""
+    client._session.get = MagicMock(
+        side_effect=aiohttp.ClientError("network error")
+    )
+    with pytest.raises(HubbleConnectionError):
+        await client.async_media_get_state()

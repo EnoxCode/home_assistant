@@ -65,6 +65,27 @@ MOCK_DISCOVERY = {
     ],
 }
 
+MOCK_MEDIA_STATE = {
+    "state": "playing",
+    "mediaContentId": "http://nas.local/track.mp3",
+    "mediaContentType": "audio",
+    "mediaTitle": "Bohemian Rhapsody",
+    "mediaArtist": "Queen",
+    "mediaImageUrl": "http://nas.local/covers/queen.jpg",
+    "mediaDuration": 354.0,
+    "mediaPosition": 42.0,
+    "mediaPositionUpdatedAt": "2026-03-17T10:23:45.123+00:00",
+    "volumeLevel": 0.7,
+    "isVolumeMuted": False,
+    "displayMode": "none",
+    "source": "default",
+    "sourceList": [
+        {"id": "default", "label": "Default"},
+        {"id": "hdmi", "label": "HDMI Output"},
+    ],
+    "announcing": False,
+}
+
 # Timer module instances for hubble-timer tests
 MOCK_TIMER_INSTANCES = [
     {"widgetId": 10, "visualization": "countdown", "config": {"slug": "timer-1"}},

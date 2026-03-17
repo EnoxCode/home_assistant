@@ -197,6 +197,24 @@ class HubbleApiClient:
         """Dismiss a single notification by UUID."""
         return await self._async_delete(f"/api/dashboard/notify/{notification_id}")
 
+    async def async_media_get_state(self) -> dict[str, Any]:
+        """GET /api/media-player/state — no auth header sent.
+
+        This endpoint does not require authentication. A 401 response means the
+        server unexpectedly requires auth and is treated as a connection error
+        (not an auth error — raising HubbleAuthError would incorrectly trigger
+        a re-auth flow for an API key that was never sent).
+        """
+        url = f"{self._base_url}/api/media-player/state"
+        try:
+            async with self._session.get(url) as response:
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err!r}") from err
+
     async def async_timer_start(
         self,
         slug: str,
