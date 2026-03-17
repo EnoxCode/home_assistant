@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
 
 from homeassistant.components.hubble.api import HubbleAuthError, HubbleConnectionError
 from homeassistant.components.hubble.websocket import HubbleWebSocketClient
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -87,6 +86,7 @@ async def test_connect_raises_auth_error_on_error_response() -> None:
     """async_connect raises HubbleAuthError when server returns {"error": ...}."""
     ws = MagicMock()
     ws.send_str = AsyncMock()
+    ws.close = AsyncMock()
     ws.receive = AsyncMock(
         return_value=aiohttp.WSMessage(
             type=aiohttp.WSMsgType.TEXT,

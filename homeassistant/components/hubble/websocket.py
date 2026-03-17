@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import json
 import logging
-from collections.abc import Callable
 from typing import Any
 
 import aiohttp
@@ -66,24 +66,31 @@ class HubbleWebSocketClient:
                 f"Cannot connect to Hubble WebSocket: {err}"
             ) from err
 
-        # Authenticate
-        await self._ws.send_str(
-            json.dumps({"action": "auth", "apiKey": self._api_key})
-        )
-        msg = await self._ws.receive()
-        if msg.type != WSMsgType.TEXT:
-            raise HubbleConnectionError(
-                f"Unexpected message type during auth: {msg.type}"
+        # Authenticate — close socket on failure so we don't leak it.
+        _auth_ok = False
+        try:
+            await self._ws.send_str(
+                json.dumps({"action": "auth", "apiKey": self._api_key})
             )
-        auth_resp = json.loads(msg.data)
-        if "error" in auth_resp:
-            raise HubbleAuthError(
-                f"WebSocket auth rejected: {auth_resp['error']}"
-            )
-        if not auth_resp.get("authenticated"):
-            raise HubbleConnectionError(
-                f"Unexpected auth response: {auth_resp}"
-            )
+            msg = await self._ws.receive()
+            if msg.type != WSMsgType.TEXT:
+                raise HubbleConnectionError(
+                    f"Unexpected message type during auth: {msg.type}"
+                )
+            auth_resp = json.loads(msg.data)
+            if "error" in auth_resp:
+                raise HubbleAuthError(
+                    f"WebSocket auth rejected: {auth_resp['error']}"
+                )
+            if not auth_resp.get("authenticated"):
+                raise HubbleConnectionError(
+                    f"Unexpected auth response: {auth_resp}"
+                )
+            _auth_ok = True
+        finally:
+            if not _auth_ok:
+                await self._ws.close()
+                self._ws = None
 
         # Subscribe using full accumulated subscription state
         await self._ws.send_str(
@@ -127,6 +134,7 @@ class HubbleWebSocketClient:
         """Add to the current subscription and send an {"action": "add"} message.
 
         Updates internal state so reconnects replay the full subscription.
+        If not currently connected, state is still updated but no message is sent.
         """
         added: dict[str, list[str]] = {}
         if events:
