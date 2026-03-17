@@ -132,6 +132,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             )
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+        # No coordinator refresh — timer sensor state is updated by WS push events.
 
     async def handle_pause_timer(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["config_entry_id"])
@@ -139,6 +140,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             await coordinator.client.async_timer_pause(call.data["slug"])
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+        # No coordinator refresh — timer sensor state is updated by WS push events.
 
     async def handle_resume_timer(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["config_entry_id"])
@@ -146,6 +148,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             await coordinator.client.async_timer_resume(call.data["slug"])
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+        # No coordinator refresh — timer sensor state is updated by WS push events.
 
     async def handle_reset_timer(call: ServiceCall) -> None:
         coordinator = _get_coordinator(hass, call.data["config_entry_id"])
@@ -153,6 +156,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             await coordinator.client.async_timer_reset(call.data["slug"])
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+        # No coordinator refresh — timer sensor state is updated by WS push events.
 
     hass.services.async_register(
         "hubble",
