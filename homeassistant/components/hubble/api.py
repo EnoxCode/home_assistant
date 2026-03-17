@@ -87,6 +87,20 @@ class HubbleApiClient:
         except aiohttp.ClientError as err:
             raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
 
+    async def async_get_connector_state(self, module_name: str) -> dict[str, Any]:
+        """Return last-emitted connector state from GET /api/dashboard/connector-state/{module_name}."""
+        url = f"{self._base_url}/api/dashboard/connector-state/{module_name}"
+        try:
+            async with self._session.get(url, headers=self._headers) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
     async def _async_post(
         self, path: str, payload: dict | None = None
     ) -> dict[str, Any]:
@@ -182,3 +196,29 @@ class HubbleApiClient:
     async def async_dismiss_notification(self, notification_id: str) -> dict[str, Any]:
         """Dismiss a single notification by UUID."""
         return await self._async_delete(f"/api/dashboard/notify/{notification_id}")
+
+    async def async_timer_start(
+        self,
+        slug: str,
+        duration: int | None = None,
+        label: str | None = None,
+    ) -> dict[str, Any]:
+        """Start or restart a timer — POST /api/module/hubble-timer/api/start."""
+        payload: dict[str, Any] = {"slug": slug}
+        if duration is not None:
+            payload["duration"] = duration
+        if label is not None:
+            payload["label"] = label
+        return await self._async_post("/api/module/hubble-timer/api/start", payload)
+
+    async def async_timer_pause(self, slug: str) -> dict[str, Any]:
+        """Pause a running timer — POST /api/module/hubble-timer/api/pause."""
+        return await self._async_post("/api/module/hubble-timer/api/pause", {"slug": slug})
+
+    async def async_timer_resume(self, slug: str) -> dict[str, Any]:
+        """Resume a paused timer — POST /api/module/hubble-timer/api/resume."""
+        return await self._async_post("/api/module/hubble-timer/api/resume", {"slug": slug})
+
+    async def async_timer_reset(self, slug: str) -> dict[str, Any]:
+        """Reset a timer to idle — POST /api/module/hubble-timer/api/reset."""
+        return await self._async_post("/api/module/hubble-timer/api/reset", {"slug": slug})
