@@ -1,6 +1,6 @@
 """Tests for HubbleApiClient."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
@@ -28,7 +28,7 @@ def client():
 
 async def test_async_discover_returns_payload(client) -> None:
     """async_discover returns the parsed JSON from GET /api/ws/events."""
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.status = 200
     mock_response.json = AsyncMock(return_value=MOCK_DISCOVERY)
     mock_response.__aenter__ = AsyncMock(return_value=mock_response)
@@ -46,7 +46,7 @@ async def test_async_discover_returns_payload(client) -> None:
 
 async def test_async_discover_raises_auth_error_on_401(client) -> None:
     """async_discover raises HubbleAuthError on HTTP 401."""
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.status = 401
     mock_response.__aenter__ = AsyncMock(return_value=mock_response)
     mock_response.__aexit__ = AsyncMock(return_value=False)
