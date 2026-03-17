@@ -23,7 +23,7 @@ The Hubble integration already has:
 | `coordinator.py` | Add `_pending_module_subs: set[str]` + `add_pending_module_subscription(module)`, update `async_start_websocket` to apply pending subs to ws_client before the reconnect loop starts |
 | `sensor.py` | Add `HubbleTimerSensor`; update `async_setup_entry` to create timer sensors + register WS handlers if `hubble-timer` is discovered |
 | `__init__.py` | Register 4 new services: `start_timer`, `pause_timer`, `resume_timer`, `reset_timer` |
-| `strings.json` / `translations/en.json` | Add `timer` sensor translation key |
+| `strings.json` / `translations/en.json` | Add `timer` sensor translation key (`"Timer"` as the friendly name, same pattern as `current_page`) |
 
 No new files. Timer sensors live in `sensor.py` alongside the existing sensors.
 
@@ -60,9 +60,19 @@ All events carry the timer `slug` in their payload.
 
 ### Initial state
 
-In `sensor.py` `async_setup_entry`, after creating timer sensors, calls `client.async_get_connector_state("hubble-timer")` which returns the last-emitted payload per topic as a dict `{topic: payload}`.
+In `sensor.py` `async_setup_entry`, after creating timer sensors, calls `client.async_get_connector_state("hubble-timer")` which returns the last-emitted payload per topic as a dict `{topic: payload}` (e.g. `{"timer:started": {...}, "timer:paused": {...}}`).
 
-Each sensor is initialised by replaying the most useful available topic payload for its slug. If no connector-state data is available for a slug, the sensor defaults to `"idle"`.
+Since the connector-state API returns the last payload **per topic** with no global ordering or timestamps, initial state is determined by applying a fixed priority over the topics present for each slug. Each sensor applies the first matching topic in this order:
+
+1. `timer:paused` → state `paused`, set `elapsed_seconds`
+2. `timer:finished` → state `finished`
+3. `timer:reset` → state `idle`, clear attributes
+4. `timer:started` → state `active`, set `mode`/`label`/`duration`/`finishes_at`
+5. `timer:resumed` → state `active`, set `elapsed_seconds`/`finishes_at`
+
+This priority reflects the most useful initial state for common scenarios (a paused or finished timer is more actionable than an ambiguous "active" from a stale start event). Sensors that start with stale state will resync on the next WS event.
+
+If no connector-state data is available for a slug, the sensor defaults to `"idle"`.
 
 ### WS dispatch
 
@@ -81,7 +91,7 @@ async def async_get_connector_state(self, module_name: str) -> dict[str, Any]:
 async def async_timer_start(
     self, slug: str, duration: int | None = None, label: str | None = None
 ) -> dict[str, Any]:
-    """POST /api/module/hubble-timer/api/start"""
+    """POST /api/module/hubble-timer/api/start — duration is int seconds (service schema coerces to int)"""
 
 async def async_timer_pause(self, slug: str) -> dict[str, Any]:
     """POST /api/module/hubble-timer/api/pause"""
@@ -127,10 +137,19 @@ All use `_get_coordinator` (already in `__init__.py`). Raise `HomeAssistantError
 self._pending_module_subs: set[str] = set()
 
 def add_pending_module_subscription(self, module_name: str) -> None:
-    """Queue a module WS subscription to be applied when the socket opens."""
+    """Queue a module WS subscription to be applied when the socket opens.
+
+    This indirection is needed because platform setup (sensor.py) runs before
+    async_start_websocket is called, so ws_client is None at that point.
+    async_start_websocket reads _pending_module_subs and applies them to the
+    newly-created ws_client before starting the reconnect loop.
+    """
     self._pending_module_subs.add(module_name)
 
 # In async_start_websocket, after creating ws_client, before starting task:
+# async_add_subscription when _ws is None only updates ws_client._subscriptions
+# (no I/O). The updated subscription state is then included in the subscribe
+# message sent by async_connect on the first reconnect loop iteration.
 if self._pending_module_subs:
     await self.ws_client.async_add_subscription(
         modules=list(self._pending_module_subs)
@@ -144,7 +163,7 @@ if self._pending_module_subs:
 ### New tests in `test_sensor.py`
 - Timer sensors created when `hubble-timer` is in discovery, not created when absent
 - Initial state populated from connector-state response
-- State transitions for each WS topic (`timer:started`, `timer:paused`, `timer:resumed`, `timer:finished`, `timer:reset`)
+- State transitions for each WS topic (`timer:started`, `timer:paused`, `timer:resumed`, `timer:finished`, `timer:reset`); use `freezegun` / `time_machine` or `unittest.mock.patch("homeassistant.util.dt.utcnow")` to control `finishes_at` timestamp assertions
 - Slug dispatch: events for slug-A do not affect slug-B sensor
 - `finishes_at` computed correctly on start and recomputed on resume
 - `finishes_at` cleared on pause/finish/reset
