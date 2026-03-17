@@ -190,6 +190,27 @@ class HubbleMediaPlayer(MediaPlayerEntity):
         return dt_util.parse_datetime(raw)
 
     @property
+    def source(self) -> str | None:
+        """Return the label for the active source, or the raw ID if not in list."""
+        if self.coordinator.media_state is None:
+            return None
+        active_id = self.coordinator.media_state.get("source")
+        if active_id is None:
+            return None
+        source_list = self.coordinator.media_state.get("sourceList", [])
+        return next(
+            (s["label"] for s in source_list if s["id"] == active_id),
+            active_id,  # fallback: return raw ID if not found in list
+        )
+
+    @property
+    def source_list(self) -> list[str] | None:
+        """Return list of source labels."""
+        if self.coordinator.media_state is None:
+            return None
+        return [s["label"] for s in self.coordinator.media_state.get("sourceList", [])]
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return Hubble-specific attributes."""
         if self.coordinator.media_state is None:

@@ -267,6 +267,53 @@ async def test_media_position_capped_at_duration(
         assert state.attributes.get("media_position") <= 354.0
 
 
+# ── Source properties ─────────────────────────────────────────────────────────
+
+
+async def test_source_returns_label_for_active_source(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """Source property returns the label matching the active source ID."""
+    # MOCK_MEDIA_STATE source="default", sourceList has id="default" label="Default"
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("source") == "Default"
+
+
+async def test_source_returns_raw_id_when_not_in_source_list(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """Source falls back to the raw ID when it's not in sourceList."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event(
+        "media:state",
+        {**MOCK_MEDIA_STATE, "source": "unknown-device-id"},
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("source") == "unknown-device-id"
+
+
+async def test_source_returns_none_when_source_is_null(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """Source property returns None when Hubble reports source as null."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event("media:state", {**MOCK_MEDIA_STATE, "source": None})
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("source") is None
+
+
+async def test_source_list_returns_labels(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """source_list exposes display labels, not device IDs."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("source_list") == ["Default", "HDMI Output"]
+
+
 async def test_entities_unavailable_when_initial_fetch_fails(
     hass: HomeAssistant,
 ) -> None:
