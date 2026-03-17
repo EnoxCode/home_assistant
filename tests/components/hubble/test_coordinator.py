@@ -29,12 +29,18 @@ def coordinator(hass: HomeAssistant) -> HubbleCoordinator:
 
 # ── page:changed ───────────────────────────────────────────────────────────────
 
+
 async def test_page_changed_updates_active_page(
     hass: HomeAssistant, coordinator: HubbleCoordinator
 ) -> None:
     """page:changed updates activePage in coordinator data."""
     coordinator._handle_ws_event(
-        "page:changed", {"activePage": 2, "page": {"id": 2, "slug": "media", "name": "Media"}, "widgets": []}
+        "page:changed",
+        {
+            "activePage": 2,
+            "page": {"id": 2, "slug": "media", "name": "Media"},
+            "widgets": [],
+        },
     )
     assert coordinator.data["activePage"] == 2
 
@@ -56,7 +62,11 @@ async def test_page_changed_does_not_replace_pages_list(
     original_pages = coordinator.data["pages"]
     coordinator._handle_ws_event(
         "page:changed",
-        {"activePage": 2, "page": {"id": 2, "slug": "media", "name": "Media"}, "widgets": []},
+        {
+            "activePage": 2,
+            "page": {"id": 2, "slug": "media", "name": "Media"},
+            "widgets": [],
+        },
     )
     # pages list must remain a list, not a single dict
     assert coordinator.data["pages"] == original_pages
@@ -64,6 +74,7 @@ async def test_page_changed_does_not_replace_pages_list(
 
 
 # ── notification events ────────────────────────────────────────────────────────
+
 
 async def test_notification_increments_count(
     hass: HomeAssistant, coordinator: HubbleCoordinator
@@ -94,6 +105,7 @@ async def test_notification_dismissed_floors_at_zero(
 
 # ── module:data routing ────────────────────────────────────────────────────────
 
+
 async def test_module_data_routes_to_registered_handler(
     hass: HomeAssistant, coordinator: HubbleCoordinator
 ) -> None:
@@ -104,7 +116,11 @@ async def test_module_data_routes_to_registered_handler(
     )
     coordinator._handle_ws_event(
         "module:data",
-        {"module": "hubble-timer", "topic": "timer:started", "data": {"slug": "timer-1"}},
+        {
+            "module": "hubble-timer",
+            "topic": "timer:started",
+            "data": {"slug": "timer-1"},
+        },
     )
     assert received == [{"slug": "timer-1"}]
 
@@ -128,12 +144,15 @@ async def test_module_data_handler_overwritten_by_second_register(
     second_calls = []
     coordinator.register_module_handler("m", "t", lambda d: first_calls.append(d))
     coordinator.register_module_handler("m", "t", lambda d: second_calls.append(d))
-    coordinator._handle_ws_event("module:data", {"module": "m", "topic": "t", "data": {}})
+    coordinator._handle_ws_event(
+        "module:data", {"module": "m", "topic": "t", "data": {}}
+    )
     assert first_calls == []
     assert len(second_calls) == 1
 
 
 # ── is_module_discovered ───────────────────────────────────────────────────────
+
 
 async def test_is_module_discovered_returns_true_for_present_module(
     hass: HomeAssistant, coordinator: HubbleCoordinator
@@ -151,6 +170,7 @@ async def test_is_module_discovered_returns_false_for_absent_module(
 
 # ── WebSocket lifecycle ────────────────────────────────────────────────────────
 
+
 async def test_ws_reconnect_loop_calls_reauth_on_auth_error(
     hass: HomeAssistant, coordinator: HubbleCoordinator
 ) -> None:
@@ -161,9 +181,7 @@ async def test_ws_reconnect_loop_calls_reauth_on_auth_error(
     mock_ws_client.async_connect = AsyncMock(side_effect=HubbleAuthError("bad key"))
     coordinator.ws_client = mock_ws_client
 
-    with patch.object(
-        coordinator.config_entry, "async_start_reauth"
-    ) as mock_reauth:
+    with patch.object(coordinator.config_entry, "async_start_reauth") as mock_reauth:
         await coordinator._ws_reconnect_loop()
 
     mock_reauth.assert_called_once_with(hass)
@@ -193,7 +211,9 @@ async def test_ws_reconnect_loop_retries_on_connection_error(
     mock_ws_client.async_connect = connect_once_then_cancel
     coordinator.ws_client = mock_ws_client
 
-    with patch("homeassistant.components.hubble.coordinator.asyncio.sleep", new=AsyncMock()):
+    with patch(
+        "homeassistant.components.hubble.coordinator.asyncio.sleep", new=AsyncMock()
+    ):
         await coordinator._ws_reconnect_loop()
 
     assert call_count == 3
@@ -221,7 +241,9 @@ async def test_ws_reconnect_loop_reconnects_after_clean_close(
     mock_ws_client.async_listen = AsyncMock(side_effect=listen)
     coordinator.ws_client = mock_ws_client
 
-    with patch("homeassistant.components.hubble.coordinator.asyncio.sleep", new=AsyncMock()):
+    with patch(
+        "homeassistant.components.hubble.coordinator.asyncio.sleep", new=AsyncMock()
+    ):
         await coordinator._ws_reconnect_loop()
 
     assert connect_calls == 2
@@ -237,6 +259,7 @@ async def test_async_stop_websocket_cancels_task_and_disconnects(
     # Create a real (never-ending) task
     async def _forever():
         import asyncio
+
         await asyncio.sleep(9999)
 
     coordinator._ws_reconnect_task = hass.async_create_task(_forever())
@@ -249,6 +272,7 @@ async def test_async_stop_websocket_cancels_task_and_disconnects(
 
 
 # ── pending module subscriptions ───────────────────────────────────────────────
+
 
 async def test_add_pending_module_subscription_queues_module(
     hass: HomeAssistant, coordinator: HubbleCoordinator
@@ -273,7 +297,9 @@ async def test_async_start_websocket_applies_pending_subs(
         await coordinator.async_start_websocket()
 
     mock_ws_instance.async_add_subscription.assert_called_once()
-    assert set(mock_ws_instance.async_add_subscription.call_args.kwargs["modules"]) == {"hubble-timer"}
+    assert set(mock_ws_instance.async_add_subscription.call_args.kwargs["modules"]) == {
+        "hubble-timer"
+    }
     # Clean up the background task
     coordinator._ws_reconnect_task.cancel()
 
@@ -292,3 +318,74 @@ async def test_async_start_websocket_skips_sub_call_when_no_pending(
 
     mock_ws_instance.async_add_subscription.assert_not_called()
     coordinator._ws_reconnect_task.cancel()
+
+
+# ── Core handler registry ───────────────────────────────────────────────────
+
+
+def test_register_core_handler_stores_handler(coordinator: HubbleCoordinator) -> None:
+    """register_core_handler stores the callable under the event name."""
+    handler = MagicMock()
+    coordinator.register_core_handler("media:state", handler)
+    assert coordinator._core_handlers["media:state"] is handler
+
+
+def test_unregister_core_handler_removes_handler(
+    coordinator: HubbleCoordinator,
+) -> None:
+    """unregister_core_handler removes the handler from _core_handlers."""
+    handler = MagicMock()
+    coordinator.register_core_handler("media:state", handler)
+    coordinator.unregister_core_handler("media:state")
+    assert "media:state" not in coordinator._core_handlers
+
+
+def test_unregister_core_handler_noop_if_not_registered(
+    coordinator: HubbleCoordinator,
+) -> None:
+    """unregister_core_handler is a no-op for an event with no handler."""
+    coordinator.unregister_core_handler("media:state")  # must not raise
+
+
+def test_handle_ws_event_dispatches_to_core_handler(
+    coordinator: HubbleCoordinator,
+) -> None:
+    """_handle_ws_event calls registered core handler with the data dict."""
+    handler = MagicMock()
+    coordinator.register_core_handler("media:state", handler)
+    data = {"state": "playing", "volumeLevel": 0.8}
+    coordinator._handle_ws_event("media:state", data)
+    handler.assert_called_once_with(data)
+
+
+def test_handle_ws_event_core_handler_skips_match_block(
+    coordinator: HubbleCoordinator,
+) -> None:
+    """Events handled by a core handler must NOT also reach the match block."""
+    handler = MagicMock()
+    coordinator.register_core_handler("page:changed", handler)
+    original_active_page = coordinator.data["activePage"]
+    coordinator._handle_ws_event("page:changed", {"activePage": 99})
+    # The match block would have changed activePage — it must NOT have.
+    assert coordinator.data["activePage"] == original_active_page
+    handler.assert_called_once()
+
+
+def test_handle_ws_event_unregistered_core_event_still_uses_match_block(
+    coordinator: HubbleCoordinator,
+) -> None:
+    """page:changed still handled by the match block when no core handler registered."""
+    coordinator._handle_ws_event("page:changed", {"activePage": 99})
+    assert coordinator.data["activePage"] == 99
+
+
+def test_handle_ws_event_after_unregister_falls_through(
+    coordinator: HubbleCoordinator,
+) -> None:
+    """After unregister, _handle_ws_event treats the event as unhandled (no crash)."""
+    handler = MagicMock()
+    coordinator.register_core_handler("media:state", handler)
+    coordinator.unregister_core_handler("media:state")
+    # Should not raise; should not call the old handler
+    coordinator._handle_ws_event("media:state", {"state": "idle"})
+    handler.assert_not_called()

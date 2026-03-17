@@ -53,6 +53,8 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._module_handlers: dict[
             tuple[str, str], Callable[[dict[str, Any]], None]
         ] = {}
+        # Core event handlers registered by platform entities (e.g. media player).
+        self._core_handlers: dict[str, Callable[[dict[str, Any]], None]] = {}
         # Pending WS module subscriptions — populated by platform setup before WS opens.
         self._pending_module_subs: set[str] = set()
 
@@ -74,8 +76,7 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def is_module_discovered(self, module_name: str) -> bool:
         """Return True if module_name is present in discovery data."""
         return any(
-            m["module"] == module_name
-            for m in self.discovery.get("modules", [])
+            m["module"] == module_name for m in self.discovery.get("modules", [])
         )
 
     def add_pending_module_subscription(self, module_name: str) -> None:
@@ -101,6 +102,18 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """
         self._module_handlers[(module_name, topic)] = handler
 
+    def register_core_handler(
+        self,
+        event: str,
+        handler: Callable[[dict[str, Any]], None],
+    ) -> None:
+        """Register a callback for a named core WebSocket event."""
+        self._core_handlers[event] = handler
+
+    def unregister_core_handler(self, event: str) -> None:
+        """Remove a previously registered core handler. No-op if not registered."""
+        self._core_handlers.pop(event, None)
+
     # ── WebSocket event routing ─────────────────────────────────────────────────
 
     def _handle_ws_event(self, event: str, data: dict[str, Any]) -> None:
@@ -112,9 +125,13 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if handler:
                 handler(data.get("data") or {})
             else:
-                _LOGGER.debug(
-                    "Unhandled module:data event: %s:%s", module, topic
-                )
+                _LOGGER.debug("Unhandled module:data event: %s:%s", module, topic)
+            return
+
+        # Core handler registry — checked before the match block.
+        handler = self._core_handlers.get(event)
+        if handler:
+            handler(data)
             return
 
         # Core events — patch coordinator data in place.
@@ -131,9 +148,7 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if "widgets" in data:
                     current["widgets"] = data["widgets"]
             case "notification":
-                current["notificationCount"] = (
-                    current.get("notificationCount", 0) + 1
-                )
+                current["notificationCount"] = current.get("notificationCount", 0) + 1
             case "notification:dismissed":
                 current["notificationCount"] = max(
                     0, current.get("notificationCount", 0) - 1
