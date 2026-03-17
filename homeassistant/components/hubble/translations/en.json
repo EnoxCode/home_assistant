@@ -46,9 +46,17 @@
                 "name": "Refresh dashboard"
             }
         },
+        "media_player": {
+            "media_player": {
+                "name": "Media player"
+            }
+        },
         "select": {
             "active_page": {
                 "name": "Active page"
+            },
+            "display_mode": {
+                "name": "Display mode"
             }
         },
         "sensor": {

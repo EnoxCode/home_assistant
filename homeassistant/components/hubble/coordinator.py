@@ -6,7 +6,10 @@ import asyncio
 from collections.abc import Callable
 import contextlib
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from homeassistant.helpers.entity import Entity
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT
@@ -57,6 +60,11 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._core_handlers: dict[str, Callable[[dict[str, Any]], None]] = {}
         # Pending WS module subscriptions — populated by platform setup before WS opens.
         self._pending_module_subs: set[str] = set()
+        # Media player state shared between select and media_player platforms.
+        self.media_state: dict[str, Any] | None = None
+        # References to the media player and display mode entities for WS updates.
+        self.media_player_entity: Entity | None = None
+        self.display_mode_entity: Entity | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch latest state from Hubble REST endpoints (fallback resync)."""

@@ -25,7 +25,7 @@ from homeassistant.helpers.typing import ConfigType
 from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError, HubbleError
 from .coordinator import HubbleConfigEntry, HubbleCoordinator
 
-PLATFORMS = [Platform.BUTTON, Platform.SELECT, Platform.SENSOR]
+PLATFORMS = [Platform.BUTTON, Platform.MEDIA_PLAYER, Platform.SELECT, Platform.SENSOR]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema("hubble")
 
