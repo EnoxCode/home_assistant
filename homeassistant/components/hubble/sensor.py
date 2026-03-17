@@ -103,13 +103,17 @@ class HubbleModuleCountSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity
     @property
     def native_value(self) -> int:
         """Return the number of installed modules."""
-        return len(self.coordinator.data.get("modules", []))
+        if not (data := self.coordinator.data):
+            return 0
+        return len(data.get("modules", []))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the names of all installed modules."""
-        modules = self.coordinator.data.get("modules", [])
-        return {"modules": [m["name"] for m in modules]}
+        if not (data := self.coordinator.data):
+            return {}
+        modules = data.get("modules", [])
+        return {"modules": [m.get("name") for m in modules if m.get("name")]}
 
 
 class HubbleNotificationCountSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
@@ -133,4 +137,6 @@ class HubbleNotificationCountSensor(CoordinatorEntity[HubbleCoordinator], Sensor
     @property
     def native_value(self) -> int | None:
         """Return the number of active notifications."""
-        return self.coordinator.data.get("notificationCount")
+        if not (data := self.coordinator.data):
+            return None
+        return data.get("notificationCount")
