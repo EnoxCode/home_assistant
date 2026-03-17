@@ -248,6 +248,11 @@ class HubbleTimerSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
         return self._slug
 
     @property
+    def available(self) -> bool:
+        """Return True — timer state is maintained locally via WS events."""
+        return True
+
+    @property
     def native_value(self) -> str:
         """Return the timer state."""
         return self._state

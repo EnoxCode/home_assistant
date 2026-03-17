@@ -1,110 +1,198 @@
 {
-  "config": {
-    "step": {
-      "user": {
-        "data": {
-          "name": "Name",
-          "host": "Host",
-          "port": "Port",
-          "api_key": "API Key"
+    "config": {
+        "abort": {
+            "already_configured": "This Hubble instance is already configured",
+            "reauth_successful": "Re-authentication successful"
+        },
+        "error": {
+            "cannot_connect": "Cannot connect to Hubble",
+            "invalid_auth": "Invalid API key",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "reauth_confirm": {
+                "data": {
+                    "api_key": "API Key"
+                }
+            },
+            "user": {
+                "data": {
+                    "api_key": "API Key",
+                    "host": "Host",
+                    "name": "Name",
+                    "port": "Port"
+                }
+            }
         }
-      },
-      "reauth_confirm": {
-        "data": {
-          "api_key": "API Key"
+    },
+    "entity": {
+        "button": {
+            "dismiss_all_notifications": {
+                "name": "Dismiss all notifications"
+            },
+            "next_page": {
+                "name": "Next page"
+            },
+            "next_widget": {
+                "name": "Next widget"
+            },
+            "previous_page": {
+                "name": "Previous page"
+            },
+            "previous_widget": {
+                "name": "Previous widget"
+            },
+            "refresh_dashboard": {
+                "name": "Refresh dashboard"
+            }
+        },
+        "select": {
+            "active_page": {
+                "name": "Active page"
+            }
+        },
+        "sensor": {
+            "current_page": {
+                "name": "Current page"
+            },
+            "module_count": {
+                "name": "Module count"
+            },
+            "notification_count": {
+                "name": "Notification count"
+            }
         }
-      }
     },
-    "error": {
-      "cannot_connect": "Cannot connect to Hubble",
-      "invalid_auth": "Invalid API key",
-      "unknown": "Unexpected error"
-    },
-    "abort": {
-      "already_configured": "This Hubble instance is already configured",
-      "reauth_successful": "Re-authentication successful"
-    }
-  },
-  "entity": {
-    "button": {
-      "next_page": {"name": "Next page"},
-      "previous_page": {"name": "Previous page"},
-      "next_widget": {"name": "Next widget"},
-      "previous_widget": {"name": "Previous widget"},
-      "dismiss_all_notifications": {"name": "Dismiss all notifications"},
-      "refresh_dashboard": {"name": "Refresh dashboard"}
-    },
-    "select": {
-      "active_page": {"name": "Active page"}
-    },
-    "sensor": {
-      "current_page": {"name": "Current page"},
-      "module_count": {"name": "Module count"},
-      "notification_count": {"name": "Notification count"}
-    }
-  },
-  "services": {
-    "send_notification": {
-      "name": "Send notification",
-      "description": "Sends a notification overlay to the Hubble dashboard.",
-      "fields": {
-        "config_entry_id": {
-          "name": "Hubble instance",
-          "description": "The Hubble dashboard to send the notification to."
+    "exceptions": {
+        "config_entry_not_found": {
+            "message": "Config entry not found."
         },
-        "title": {
-          "name": "Title",
-          "description": "Short heading displayed at the top of the notification."
-        },
-        "message": {
-          "name": "Message",
-          "description": "Body text. Supports **bold**, *italic*, and `code` markdown."
-        },
-        "level": {
-          "name": "Level",
-          "description": "Severity level. Determines card colour and icon."
-        },
-        "permanent": {
-          "name": "Permanent",
-          "description": "If true, notification stays until dismissed. Mutually exclusive with timer."
-        },
-        "timer": {
-          "name": "Timer",
-          "description": "Seconds until auto-dismiss. Mutually exclusive with permanent."
-        },
-        "image": {
-          "name": "Image",
-          "description": "Optional image URL or base64 data URI."
+        "config_entry_not_loaded": {
+            "message": "Hubble integration is not loaded."
         }
-      }
     },
-    "dismiss_notification": {
-      "name": "Dismiss notification",
-      "description": "Dismisses a single active notification by its ID.",
-      "fields": {
-        "config_entry_id": {
-          "name": "Hubble instance",
-          "description": "The Hubble dashboard to dismiss the notification on."
-        },
-        "notification_id": {
-          "name": "Notification ID",
-          "description": "UUID returned by the send_notification action."
+    "selector": {
+        "notification_level": {
+            "options": {
+                "critical": "Critical",
+                "error": "Error",
+                "info": "Info",
+                "warning": "Warning"
+            }
         }
-      }
+    },
+    "services": {
+        "dismiss_notification": {
+            "description": "Dismisses a single active notification by its ID.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard to dismiss the notification on.",
+                    "name": "Hubble instance"
+                },
+                "notification_id": {
+                    "description": "UUID returned by the send_notification action.",
+                    "name": "Notification ID"
+                }
+            },
+            "name": "Dismiss notification"
+        },
+        "send_notification": {
+            "description": "Sends a notification overlay to the Hubble dashboard.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard to send the notification to.",
+                    "name": "Hubble instance"
+                },
+                "image": {
+                    "description": "Optional image URL or base64 data URI.",
+                    "name": "Image"
+                },
+                "level": {
+                    "description": "Severity level. Determines card colour and icon.",
+                    "name": "Level"
+                },
+                "message": {
+                    "description": "Body text. Supports **bold**, *italic*, and `code` markdown.",
+                    "name": "Message"
+                },
+                "permanent": {
+                    "description": "If true, notification stays until dismissed. Mutually exclusive with timer.",
+                    "name": "Permanent"
+                },
+                "timer": {
+                    "description": "Seconds until auto-dismiss. Mutually exclusive with permanent.",
+                    "name": "Timer"
+                },
+                "title": {
+                    "description": "Short heading displayed at the top of the notification.",
+                    "name": "Title"
+                }
+            },
+            "name": "Send notification"
+        },
+        "start_timer": {
+            "description": "Starts or restarts a Hubble timer widget.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug (e.g. timer-1).",
+                    "name": "Slug"
+                },
+                "duration": {
+                    "description": "Duration in seconds. Omit for stopwatch mode.",
+                    "name": "Duration"
+                },
+                "label": {
+                    "description": "Display label for this timer run.",
+                    "name": "Label"
+                }
+            },
+            "name": "Start timer"
+        },
+        "pause_timer": {
+            "description": "Pauses a running Hubble timer.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug.",
+                    "name": "Slug"
+                }
+            },
+            "name": "Pause timer"
+        },
+        "resume_timer": {
+            "description": "Resumes a paused Hubble timer.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug.",
+                    "name": "Slug"
+                }
+            },
+            "name": "Resume timer"
+        },
+        "reset_timer": {
+            "description": "Resets a Hubble timer to idle.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "The Hubble dashboard.",
+                    "name": "Hubble instance"
+                },
+                "slug": {
+                    "description": "Timer widget slug.",
+                    "name": "Slug"
+                }
+            },
+            "name": "Reset timer"
+        }
     }
-  },
-  "selector": {
-    "notification_level": {
-      "options": {
-        "info": "Info",
-        "warning": "Warning",
-        "error": "Error",
-        "critical": "Critical"
-      }
-    }
-  },
-  "exceptions": {
-    "config_entry_not_found": {"message": "Config entry not found."},
-    "config_entry_not_loaded": {"message": "Hubble integration is not loaded."}
-  }
 }
