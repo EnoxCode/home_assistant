@@ -34,6 +34,11 @@
             "dismiss_all_notifications": {"name": "Dismiss all notifications"},
             "refresh_dashboard": {"name": "Refresh dashboard"}
         },
+        "select": {
+            "active_page": {
+                "name": "Active Page"
+            }
+        },
         "sensor": {
             "current_page": {
                 "name": "Current Page"
