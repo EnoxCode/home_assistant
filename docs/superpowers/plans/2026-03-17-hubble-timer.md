@@ -636,20 +636,38 @@ async def test_timer_paused_event_sets_paused_state(hass: HomeAssistant) -> None
 
 
 async def test_timer_resumed_recomputes_finishes_at(hass: HomeAssistant) -> None:
-    """timer:resumed recomputes finishes_at from remaining = duration - elapsed."""
-    fake_now = datetime(2026, 3, 17, 12, 0, 0, tzinfo=timezone.utc)
-    # Start first so duration is known
-    connector_state = {
-        "timer:paused": {"slug": "timer-1", "elapsed": 60.0},
-        "timer:started": {"slug": "timer-1", "mode": "countdown", "duration": 300},
-    }
+    """timer:resumed recomputes finishes_at from remaining = duration - elapsed.
 
-    async with _setup_with_timer(hass, connector_state=connector_state) as (entry, _):
+    Drive to paused state via WS events (not connector-state) so that _duration
+    is set from timer:started before timer:paused clears finishes_at.
+    """
+    fake_now = datetime(2026, 3, 17, 12, 0, 0, tzinfo=timezone.utc)
+
+    async with _setup_with_timer(hass) as (entry, _):
         coordinator = entry.runtime_data
         with patch(
             "homeassistant.components.hubble.sensor.dt_util.utcnow",
             return_value=fake_now,
         ):
+            # Start timer so _duration = 300 is stored on the sensor
+            coordinator._handle_ws_event(
+                "module:data",
+                {
+                    "module": "hubble-timer",
+                    "topic": "timer:started",
+                    "data": {"slug": "timer-1", "mode": "countdown", "duration": 300},
+                },
+            )
+            # Pause it — _duration stays set, _finishes_at cleared
+            coordinator._handle_ws_event(
+                "module:data",
+                {
+                    "module": "hubble-timer",
+                    "topic": "timer:paused",
+                    "data": {"slug": "timer-1", "elapsed": 60.0},
+                },
+            )
+            # Resume — should recompute finishes_at = now + (300 - 60)
             coordinator._handle_ws_event(
                 "module:data",
                 {
