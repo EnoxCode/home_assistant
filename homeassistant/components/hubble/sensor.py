@@ -1,10 +1,10 @@
-"""Hubble sensor platform — current page."""
+"""Hubble sensor platform."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -22,7 +22,20 @@ async def async_setup_entry(
 ) -> None:
     """Set up Hubble sensors from a config entry."""
     coordinator: HubbleCoordinator = entry.runtime_data
-    async_add_entities([HubbleCurrentPageSensor(coordinator, entry)])
+    async_add_entities([
+        HubbleCurrentPageSensor(coordinator, entry),
+        HubbleModuleCountSensor(coordinator, entry),
+        HubbleNotificationCountSensor(coordinator, entry),
+    ])
+
+
+def _device_info(entry: HubbleConfigEntry) -> DeviceInfo:
+    """Return shared DeviceInfo for all Hubble entities."""
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=entry.data.get(CONF_NAME, "Hubble"),
+        manufacturer="Hubble",
+    )
 
 
 class HubbleCurrentPageSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
@@ -39,11 +52,7 @@ class HubbleCurrentPageSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity
         """Initialise the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_current_page"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.data.get(CONF_NAME, "Hubble"),
-            manufacturer="Hubble",
-        )
+        self._attr_device_info = _device_info(entry)
 
     def _current_page(self) -> dict[str, Any] | None:
         """Return the page dict matching activePage, or None."""
@@ -71,3 +80,57 @@ class HubbleCurrentPageSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity
         if page is None:
             return {}
         return {"slug": page["slug"], "id": page["id"]}
+
+
+class HubbleModuleCountSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
+    """Sensor reporting the number of installed Hubble modules."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "module_count"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = None
+
+    def __init__(
+        self,
+        coordinator: HubbleCoordinator,
+        entry: HubbleConfigEntry,
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_module_count"
+        self._attr_device_info = _device_info(entry)
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of installed modules."""
+        return len(self.coordinator.data.get("modules", []))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the names of all installed modules."""
+        modules = self.coordinator.data.get("modules", [])
+        return {"modules": [m["name"] for m in modules]}
+
+
+class HubbleNotificationCountSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
+    """Sensor reporting the number of active dashboard notifications."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "notification_count"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = None
+
+    def __init__(
+        self,
+        coordinator: HubbleCoordinator,
+        entry: HubbleConfigEntry,
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_notification_count"
+        self._attr_device_info = _device_info(entry)
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of active notifications."""
+        return self.coordinator.data.get("notificationCount")

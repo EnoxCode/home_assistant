@@ -86,3 +86,32 @@ async def test_coordinator_fetches_all_endpoints(hass: HomeAssistant) -> None:
     assert data["notificationCount"] == MOCK_NOTIFY_COUNT
     assert data["modules"] == MOCK_MODULES
     assert data["activePage"] == 1
+
+
+async def test_module_count_sensor(hass: HomeAssistant, setup_integration) -> None:
+    """Module count sensor reports count and module names in attributes."""
+    state = hass.states.get("sensor.kitchen_screen_module_count")
+    assert state is not None
+    assert state.state == "2"
+    assert state.attributes["modules"] == ["hubble-clock", "hubble-weather"]
+
+
+async def test_notification_count_sensor(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Notification count sensor reports the active notification count."""
+    state = hass.states.get("sensor.kitchen_screen_notification_count")
+    assert state is not None
+    assert state.state == "2"
+
+
+async def test_notification_count_updates(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Notification count sensor updates when coordinator data changes."""
+    coordinator = setup_integration.runtime_data
+    coordinator.async_set_updated_data({**MOCK_STATE, "notificationCount": 0})
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.kitchen_screen_notification_count")
+    assert state.state == "0"

@@ -29,6 +29,12 @@
     "sensor": {
       "current_page": {
         "name": "Current Page"
+      },
+      "module_count": {
+        "name": "Module Count"
+      },
+      "notification_count": {
+        "name": "Notification Count"
       }
     }
   }
