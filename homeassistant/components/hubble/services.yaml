@@ -46,3 +46,59 @@ dismiss_notification:
       required: true
       selector:
         text: {}
+
+start_timer:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: hubble
+    slug:
+      required: true
+      selector:
+        text: {}
+    duration:
+      selector:
+        number:
+          min: 1
+          mode: box
+    label:
+      selector:
+        text: {}
+
+pause_timer:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: hubble
+    slug:
+      required: true
+      selector:
+        text: {}
+
+resume_timer:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: hubble
+    slug:
+      required: true
+      selector:
+        text: {}
+
+reset_timer:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: hubble
+    slug:
+      required: true
+      selector:
+        text: {}
