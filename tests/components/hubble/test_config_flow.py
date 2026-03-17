@@ -25,7 +25,7 @@ async def test_user_flow_success(hass: HomeAssistant, mock_hubble_client) -> Non
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Hubble (kitchen-screen:3000)"
+    assert result["title"] == "Kitchen Screen"
     assert result["data"] == MOCK_USER_INPUT
 
 

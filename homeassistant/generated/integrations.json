@@ -2770,6 +2770,12 @@
       "iot_class": "cloud_push",
       "single_config_entry": true
     },
+    "hubble": {
+      "name": "Hubble",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "local_polling"
+    },
     "huawei_lte": {
       "name": "Huawei LTE",
       "integration_type": "hub",

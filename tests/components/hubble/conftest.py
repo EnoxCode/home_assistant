@@ -28,5 +28,5 @@ def mock_config_entry():
     return MockConfigEntry(
         domain=DOMAIN,
         data=MOCK_USER_INPUT,
-        title="Hubble (kitchen-screen:3000)",
+        title="Kitchen Screen",
     )

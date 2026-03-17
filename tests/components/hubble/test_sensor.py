@@ -18,7 +18,7 @@ async def setup_integration(hass: HomeAssistant):
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=MOCK_USER_INPUT,
-        title="Hubble (kitchen-screen:3000)",
+        title="Kitchen Screen",
     )
     entry.add_to_hass(hass)
 
@@ -33,7 +33,7 @@ async def setup_integration(hass: HomeAssistant):
 
 async def test_sensor_state(hass: HomeAssistant, setup_integration) -> None:
     """Sensor state is the name of the active page."""
-    state = hass.states.get("sensor.hubble_kitchen_screen_3000_current_page")
+    state = hass.states.get("sensor.kitchen_screen_current_page")
     assert state is not None
     assert state.state == "Home"
     assert state.attributes["slug"] == "home"
@@ -45,7 +45,7 @@ async def test_sensor_unavailable_no_data(hass: HomeAssistant) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=MOCK_USER_INPUT,
-        title="Hubble (kitchen-screen:3000)",
+        title="Kitchen Screen",
     )
     entry.add_to_hass(hass)
 
@@ -55,7 +55,7 @@ async def test_sensor_unavailable_no_data(hass: HomeAssistant) -> None:
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.hubble_kitchen_screen_3000_current_page")
+    state = hass.states.get("sensor.kitchen_screen_current_page")
     # Entry won't load when first refresh fails — sensor won't exist
     assert state is None
 
@@ -71,6 +71,6 @@ async def test_sensor_unavailable_page_not_found(
     coordinator.async_set_updated_data(bad_state)
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.hubble_kitchen_screen_3000_current_page")
+    state = hass.states.get("sensor.kitchen_screen_current_page")
     assert state is not None
     assert state.state == "unavailable"

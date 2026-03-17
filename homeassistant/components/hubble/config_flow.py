@@ -9,7 +9,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError
@@ -19,6 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_NAME, default="Hubble"): str,
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
         vol.Required(CONF_API_KEY): str,
@@ -58,7 +59,7 @@ class HubbleConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 return self.async_create_entry(
-                    title=f"Hubble ({user_input[CONF_HOST]}:{user_input[CONF_PORT]})",
+                    title=user_input[CONF_NAME],
                     data=user_input,
                 )
 

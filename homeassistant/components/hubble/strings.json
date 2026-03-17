@@ -3,6 +3,7 @@
     "step": {
       "user": {
         "data": {
+          "name": "Name",
           "host": "Host",
           "port": "Port",
           "api_key": "API Key"

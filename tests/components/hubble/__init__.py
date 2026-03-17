@@ -1,6 +1,7 @@
 """Tests for the Hubble integration."""
 
 MOCK_USER_INPUT = {
+    "name": "Kitchen Screen",
     "host": "kitchen-screen",
     "port": 3000,
     "api_key": "test-api-key",

@@ -267,6 +267,7 @@ FLOWS = {
         "homeworks",
         "honeywell",
         "html5",
+        "hubble",
         "huawei_lte",
         "hue",
         "huisbaasje",
