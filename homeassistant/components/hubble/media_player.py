@@ -335,11 +335,7 @@ class HubbleMediaPlayer(MediaPlayerEntity):
         self, media_content_type: str | None = None, media_content_id: str | None = None
     ) -> BrowseMedia:
         """Expose HA media sources for browsing."""
-        return await media_source.async_browse_media(
-            self.hass,
-            media_content_id,
-            supported_media_types=None,
-        )
+        return await media_source.async_browse_media(self.hass, media_content_id)
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up stored reference when entity is removed."""
