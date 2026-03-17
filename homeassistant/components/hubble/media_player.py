@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
@@ -104,6 +105,68 @@ class HubbleMediaPlayer(MediaPlayerEntity):
     def available(self) -> bool:
         """Return True when player state has been fetched."""
         return self.coordinator.media_state is not None
+
+    @property
+    def state(self) -> MediaPlayerState | None:
+        """Return current playback state."""
+        if self.coordinator.media_state is None:
+            return None
+        return _HUBBLE_STATE_MAP.get(self.coordinator.media_state.get("state", ""))
+
+    @property
+    def media_content_id(self) -> str | None:
+        """Return media content ID (URL or identifier)."""
+        return (self.coordinator.media_state or {}).get("mediaContentId")
+
+    @property
+    def media_content_type(self) -> MediaType | None:
+        """Return mapped HA media content type."""
+        raw = (self.coordinator.media_state or {}).get("mediaContentType")
+        if raw == "audio":
+            return MediaType.MUSIC
+        if raw == "video":
+            return MediaType.VIDEO
+        return None
+
+    @property
+    def media_title(self) -> str | None:
+        """Return track/media title."""
+        return (self.coordinator.media_state or {}).get("mediaTitle")
+
+    @property
+    def media_artist(self) -> str | None:
+        """Return artist name."""
+        return (self.coordinator.media_state or {}).get("mediaArtist")
+
+    @property
+    def media_image_url(self) -> str | None:
+        """Return URL for album/media artwork."""
+        return (self.coordinator.media_state or {}).get("mediaImageUrl")
+
+    @property
+    def media_duration(self) -> int | None:
+        """Return total media duration in seconds."""
+        return (self.coordinator.media_state or {}).get("mediaDuration")
+
+    @property
+    def volume_level(self) -> float | None:
+        """Return volume level (0.0–1.0)."""
+        return (self.coordinator.media_state or {}).get("volumeLevel")
+
+    @property
+    def is_volume_muted(self) -> bool | None:
+        """Return True if volume is muted."""
+        return (self.coordinator.media_state or {}).get("isVolumeMuted")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return Hubble-specific attributes."""
+        if self.coordinator.media_state is None:
+            return {}
+        return {
+            "display_mode": self.coordinator.media_state.get("displayMode"),
+            "announcing": self.coordinator.media_state.get("announcing"),
+        }
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up stored reference when entity is removed."""

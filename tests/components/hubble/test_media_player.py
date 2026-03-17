@@ -11,8 +11,6 @@ from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 
-from tests.common import MockConfigEntry
-
 from . import (
     MOCK_DASHBOARD_STATE,
     MOCK_DISCOVERY,
@@ -20,6 +18,8 @@ from . import (
     MOCK_NOTIFY_COUNT,
     MOCK_USER_INPUT,
 )
+
+from tests.common import MockConfigEntry
 
 
 @pytest.fixture
@@ -89,6 +89,107 @@ async def test_media_state_handler_registered_on_coordinator(
     entry, _ = setup_media_player
     coordinator = entry.runtime_data
     assert "media:state" in coordinator._core_handlers
+
+
+# ── State mapping ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("hubble_state", "expected"),
+    [
+        ("off", "off"),
+        ("idle", "idle"),
+        ("playing", "playing"),
+        ("paused", "paused"),
+        ("buffering", "buffering"),
+    ],
+)
+async def test_state_mapping(
+    hass: HomeAssistant,
+    setup_media_player,
+    hubble_state: str,
+    expected: str,
+) -> None:
+    """Hubble state strings map correctly to HA MediaPlayerState values."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event(
+        "media:state", {**MOCK_MEDIA_STATE, "state": hubble_state}
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.state == expected
+
+
+async def test_media_content_type_audio_maps_to_music(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """MediaContentType 'audio' maps to MediaType.MUSIC."""
+    entry, _ = setup_media_player
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("media_content_type") == "music"
+
+
+async def test_media_content_type_video_maps_to_video(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """MediaContentType 'video' maps to MediaType.VIDEO."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event(
+        "media:state", {**MOCK_MEDIA_STATE, "mediaContentType": "video"}
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("media_content_type") == "video"
+
+
+async def test_media_title_exposed(hass: HomeAssistant, setup_media_player) -> None:
+    """media_title attribute is populated from MOCK_MEDIA_STATE."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("media_title") == "Bohemian Rhapsody"
+
+
+async def test_media_artist_exposed(hass: HomeAssistant, setup_media_player) -> None:
+    """media_artist attribute is populated from MOCK_MEDIA_STATE."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("media_artist") == "Queen"
+
+
+async def test_entity_picture_uses_media_image_url(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """media_image_url (not entity_picture) carries the artwork URL."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("entity_picture") == "http://nas.local/covers/queen.jpg"
+
+
+async def test_volume_level_exposed(hass: HomeAssistant, setup_media_player) -> None:
+    """volume_level attribute is populated from MOCK_MEDIA_STATE."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("volume_level") == 0.7
+
+
+async def test_is_volume_muted_exposed(hass: HomeAssistant, setup_media_player) -> None:
+    """is_volume_muted attribute is populated from MOCK_MEDIA_STATE."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("is_volume_muted") is False
+
+
+async def test_extra_state_attributes_display_mode(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """display_mode extra attribute is populated from MOCK_MEDIA_STATE."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("display_mode") == "none"
+
+
+async def test_extra_state_attributes_announcing(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """Announcing extra attribute is populated from MOCK_MEDIA_STATE."""
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("announcing") is False
 
 
 async def test_entities_unavailable_when_initial_fetch_fails(
