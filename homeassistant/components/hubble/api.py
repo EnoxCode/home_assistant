@@ -231,12 +231,66 @@ class HubbleApiClient:
 
     async def async_timer_pause(self, slug: str) -> dict[str, Any]:
         """Pause a running timer — POST /api/module/hubble-timer/api/pause."""
-        return await self._async_post("/api/module/hubble-timer/api/pause", {"slug": slug})
+        return await self._async_post(
+            "/api/module/hubble-timer/api/pause", {"slug": slug}
+        )
 
     async def async_timer_resume(self, slug: str) -> dict[str, Any]:
         """Resume a paused timer — POST /api/module/hubble-timer/api/resume."""
-        return await self._async_post("/api/module/hubble-timer/api/resume", {"slug": slug})
+        return await self._async_post(
+            "/api/module/hubble-timer/api/resume", {"slug": slug}
+        )
 
     async def async_timer_reset(self, slug: str) -> dict[str, Any]:
         """Reset a timer to idle — POST /api/module/hubble-timer/api/reset."""
-        return await self._async_post("/api/module/hubble-timer/api/reset", {"slug": slug})
+        return await self._async_post(
+            "/api/module/hubble-timer/api/reset", {"slug": slug}
+        )
+
+    async def async_media_play(
+        self,
+        url: str,
+        *,
+        content_type: str | None = None,
+        display_mode: str | None = None,
+        title: str | None = None,
+        artist: str | None = None,
+        image_url: str | None = None,
+        volume: float | None = None,
+        announce: bool = False,
+    ) -> dict[str, Any]:
+        """POST /api/media-player/play."""
+        payload: dict[str, Any] = {"url": url, "announce": announce}
+        if content_type is not None:
+            payload["contentType"] = content_type
+        if display_mode is not None:
+            payload["displayMode"] = display_mode
+        if title is not None:
+            payload["title"] = title
+        if artist is not None:
+            payload["artist"] = artist
+        if image_url is not None:
+            payload["imageUrl"] = image_url
+        if volume is not None:
+            payload["volume"] = volume
+        return await self._async_post("/api/media-player/play", payload)
+
+    async def async_media_resume(self) -> dict[str, Any]:
+        """POST /api/media-player/resume."""
+        return await self._async_post("/api/media-player/resume")
+
+    async def async_media_pause(self) -> dict[str, Any]:
+        """POST /api/media-player/pause."""
+        return await self._async_post("/api/media-player/pause")
+
+    async def async_media_stop(self) -> dict[str, Any]:
+        """POST /api/media-player/stop."""
+        return await self._async_post("/api/media-player/stop")
+
+    async def async_media_turn_on(self) -> dict[str, Any]:
+        """POST /api/media-player/turn-on."""
+        return await self._async_post("/api/media-player/turn-on")
+
+    async def async_media_turn_off(self) -> dict[str, Any]:
+        """POST /api/media-player/turn-off."""
+        return await self._async_post("/api/media-player/turn-off")

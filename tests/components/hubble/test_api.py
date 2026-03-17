@@ -105,7 +105,7 @@ async def test_async_get_connector_state_raises_connection_error(client) -> None
 
 
 def _mock_post_response(session, return_value):
-    """Helper: make session.post return a 200 JSON response."""
+    """Set session.post to return a 200 JSON response."""
     mock_response = MagicMock()
     mock_response.status = 200
     mock_response.json = AsyncMock(return_value=return_value)
@@ -242,8 +242,140 @@ async def test_async_media_get_state_raises_connection_error_on_network_failure(
     client,
 ) -> None:
     """async_media_get_state raises HubbleConnectionError on aiohttp.ClientError."""
-    client._session.get = MagicMock(
-        side_effect=aiohttp.ClientError("network error")
-    )
+    client._session.get = MagicMock(side_effect=aiohttp.ClientError("network error"))
     with pytest.raises(HubbleConnectionError):
         await client.async_media_get_state()
+
+
+def _make_post_response(payload: dict) -> MagicMock:
+    """Return a context manager that yields a 200 JSON response."""
+    mock_response = MagicMock()
+    mock_response.status = 200
+    mock_response.json = AsyncMock(return_value=payload)
+    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_response.__aexit__ = AsyncMock(return_value=False)
+    return mock_response
+
+
+# ── async_media_resume / pause / stop / turn-on / turn-off ──────────────────
+
+
+async def test_async_media_resume_posts_to_correct_endpoint(client) -> None:
+    """Test async_media_resume POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    result = await client.async_media_resume()
+    assert result == {"success": True}
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/resume",
+        headers={"x-api-key": "test-api-key"},
+        json={},
+    )
+
+
+async def test_async_media_pause_posts_to_correct_endpoint(client) -> None:
+    """Test async_media_pause POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_pause()
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/pause",
+        headers={"x-api-key": "test-api-key"},
+        json={},
+    )
+
+
+async def test_async_media_stop_posts_to_correct_endpoint(client) -> None:
+    """Test async_media_stop POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_stop()
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/stop",
+        headers={"x-api-key": "test-api-key"},
+        json={},
+    )
+
+
+async def test_async_media_turn_on_posts_to_correct_endpoint(client) -> None:
+    """Test async_media_turn_on POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_turn_on()
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/turn-on",
+        headers={"x-api-key": "test-api-key"},
+        json={},
+    )
+
+
+async def test_async_media_turn_off_posts_to_correct_endpoint(client) -> None:
+    """Test async_media_turn_off POSTs to the correct endpoint."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_turn_off()
+    client._session.post.assert_called_once_with(
+        "http://kitchen-screen:3000/api/media-player/turn-off",
+        headers={"x-api-key": "test-api-key"},
+        json={},
+    )
+
+
+# ── async_media_play ─────────────────────────────────────────────────────────
+
+
+async def test_async_media_play_sends_required_url(client) -> None:
+    """Test async_media_play sends required url parameter."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_play(url="http://nas.local/track.mp3")
+    _, kwargs = client._session.post.call_args
+    assert kwargs["json"]["url"] == "http://nas.local/track.mp3"
+    assert kwargs["json"]["announce"] is False
+
+
+async def test_async_media_play_includes_optional_fields_when_provided(
+    client,
+) -> None:
+    """Test async_media_play includes optional fields when provided."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_play(
+        url="http://nas.local/track.mp3",
+        content_type="audio",
+        title="Bohemian Rhapsody",
+        artist="Queen",
+        image_url="http://nas.local/cover.jpg",
+        volume=0.8,
+        display_mode="none",
+        announce=True,
+    )
+    _, kwargs = client._session.post.call_args
+    body = kwargs["json"]
+    assert body["contentType"] == "audio"
+    assert body["title"] == "Bohemian Rhapsody"
+    assert body["artist"] == "Queen"
+    assert body["imageUrl"] == "http://nas.local/cover.jpg"
+    assert body["volume"] == 0.8
+    assert body["displayMode"] == "none"
+    assert body["announce"] is True
+
+
+async def test_async_media_play_omits_none_optional_fields(client) -> None:
+    """Test async_media_play omits None optional fields from payload."""
+    client._session.post = MagicMock(
+        return_value=_make_post_response({"success": True})
+    )
+    await client.async_media_play(url="http://nas.local/track.mp3")
+    _, kwargs = client._session.post.call_args
+    body = kwargs["json"]
+    assert "contentType" not in body
+    assert "title" not in body
+    assert "artist" not in body
