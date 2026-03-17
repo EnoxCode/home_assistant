@@ -246,3 +246,50 @@ async def test_async_stop_websocket_cancels_task_and_disconnects(
     mock_ws_client.async_disconnect.assert_called_once()
     assert coordinator.ws_client is None
     assert coordinator._ws_reconnect_task is None
+
+
+# ── pending module subscriptions ───────────────────────────────────────────────
+
+async def test_add_pending_module_subscription_queues_module(
+    hass: HomeAssistant, coordinator: HubbleCoordinator
+) -> None:
+    """add_pending_module_subscription adds to _pending_module_subs set."""
+    coordinator.add_pending_module_subscription("hubble-timer")
+    assert "hubble-timer" in coordinator._pending_module_subs
+
+
+async def test_async_start_websocket_applies_pending_subs(
+    hass: HomeAssistant, coordinator: HubbleCoordinator
+) -> None:
+    """async_start_websocket transfers pending module subs to the ws_client."""
+    coordinator.add_pending_module_subscription("hubble-timer")
+
+    mock_ws_instance = AsyncMock()
+
+    with patch(
+        "homeassistant.components.hubble.coordinator.HubbleWebSocketClient",
+        return_value=mock_ws_instance,
+    ):
+        await coordinator.async_start_websocket()
+
+    mock_ws_instance.async_add_subscription.assert_called_once_with(
+        modules=["hubble-timer"]
+    )
+    # Clean up the background task
+    coordinator._ws_reconnect_task.cancel()
+
+
+async def test_async_start_websocket_skips_sub_call_when_no_pending(
+    hass: HomeAssistant, coordinator: HubbleCoordinator
+) -> None:
+    """async_start_websocket does not call async_add_subscription when no pending subs."""
+    mock_ws_instance = AsyncMock()
+
+    with patch(
+        "homeassistant.components.hubble.coordinator.HubbleWebSocketClient",
+        return_value=mock_ws_instance,
+    ):
+        await coordinator.async_start_websocket()
+
+    mock_ws_instance.async_add_subscription.assert_not_called()
+    coordinator._ws_reconnect_task.cancel()

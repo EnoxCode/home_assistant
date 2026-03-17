@@ -53,6 +53,8 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._module_handlers: dict[
             tuple[str, str], Callable[[dict[str, Any]], None]
         ] = {}
+        # Pending WS module subscriptions — populated by platform setup before WS opens.
+        self._pending_module_subs: set[str] = set()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch latest state from Hubble REST endpoints (fallback resync)."""
@@ -75,6 +77,16 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             m["module"] == module_name
             for m in self.discovery.get("modules", [])
         )
+
+    def add_pending_module_subscription(self, module_name: str) -> None:
+        """Queue a module WS subscription to be applied when the socket opens.
+
+        This indirection is needed because platform setup (sensor.py) runs before
+        async_start_websocket is called, so ws_client is None at that point.
+        async_start_websocket reads _pending_module_subs and transfers them to the
+        newly-created ws_client before starting the reconnect loop.
+        """
+        self._pending_module_subs.add(module_name)
 
     def register_module_handler(
         self,
@@ -142,6 +154,14 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             session=async_get_clientsession(self.hass),
             on_event=self._handle_ws_event,
         )
+        # Transfer pending module subscriptions to the ws_client. Since _ws is None
+        # at this point, async_add_subscription only updates internal subscription
+        # state (no I/O). The updated state is included in the subscribe message
+        # sent by async_connect on the first reconnect loop iteration.
+        if self._pending_module_subs:
+            await self.ws_client.async_add_subscription(
+                modules=list(self._pending_module_subs)
+            )
         self._ws_reconnect_task = self.hass.async_create_task(
             self._ws_reconnect_loop(),
             eager_start=False,
