@@ -221,6 +221,7 @@ class HubbleTimerSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
     """
 
     _attr_has_entity_name = True
+    _attr_icon = "mdi:timer"
 
     def __init__(
         self,
