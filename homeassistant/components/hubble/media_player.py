@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.media_player import (
+    ATTR_MEDIA_EXTRA,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
@@ -13,6 +14,7 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 import homeassistant.util.dt as dt_util
@@ -219,6 +221,102 @@ class HubbleMediaPlayer(MediaPlayerEntity):
             "display_mode": self.coordinator.media_state.get("displayMode"),
             "announcing": self.coordinator.media_state.get("announcing"),
         }
+
+    async def async_turn_on(self) -> None:
+        """Turn on the media player."""
+        try:
+            await self.coordinator.client.async_media_turn_on()
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_turn_off(self) -> None:
+        """Turn off the media player."""
+        try:
+            await self.coordinator.client.async_media_turn_off()
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_media_play(self) -> None:
+        """Send play command (resume)."""
+        try:
+            await self.coordinator.client.async_media_resume()
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_media_pause(self) -> None:
+        """Send pause command."""
+        try:
+            await self.coordinator.client.async_media_pause()
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_media_stop(self) -> None:
+        """Send stop command."""
+        try:
+            await self.coordinator.client.async_media_stop()
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_set_volume_level(self, volume: float) -> None:
+        """Set volume level, range 0..1."""
+        try:
+            await self.coordinator.client.async_media_set_volume_level(volume)
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_mute_volume(self, mute: bool) -> None:
+        """Mute (true) or unmute (false) media player."""
+        try:
+            await self.coordinator.client.async_media_mute_volume(mute)
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_volume_up(self) -> None:
+        """Turn volume up for media player."""
+        try:
+            await self.coordinator.client.async_media_volume_step("up")
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_volume_down(self) -> None:
+        """Turn volume down for media player."""
+        try:
+            await self.coordinator.client.async_media_volume_step("down")
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_play_media(
+        self, media_type: MediaType | str, media_id: str, **kwargs: Any
+    ) -> None:
+        """Play a piece of media."""
+        announce: bool = kwargs.get("announce", False)
+        extra: dict[str, Any] = kwargs.get(ATTR_MEDIA_EXTRA, {})
+        content_type = _MEDIA_TYPE_MAP.get(str(media_type))
+        try:
+            await self.coordinator.client.async_media_play(
+                url=media_id,
+                content_type=content_type,
+                title=extra.get("title"),
+                artist=extra.get("artist"),
+                image_url=extra.get("imageUrl"),
+                volume=extra.get("volume"),
+                display_mode=extra.get("displayMode"),
+                announce=announce,
+            )
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_select_source(self, source: str) -> None:
+        """Select input source."""
+        source_list = (self.coordinator.media_state or {}).get("sourceList", [])
+        source_id = next(
+            (s["id"] for s in source_list if s["label"] == source),
+            source,  # fallback: pass raw string; API returns 400 → HomeAssistantError
+        )
+        try:
+            await self.coordinator.client.async_media_set_source(source_id)
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up stored reference when entity is removed."""
