@@ -48,7 +48,7 @@
         },
         "media_player": {
             "media_player": {
-                "name": "Media player"
+                "name": "Media Player"
             }
         },
         "select": {
@@ -56,7 +56,17 @@
                 "name": "Active page"
             },
             "display_mode": {
-                "name": "Display mode"
+                "name": "Display Mode",
+                "state": {
+                    "fullscreen": "Fullscreen",
+                    "half-top": "Half top",
+                    "half-bottom": "Half bottom",
+                    "quarter-tl": "Quarter top-left",
+                    "quarter-tr": "Quarter top-right",
+                    "quarter-bl": "Quarter bottom-left",
+                    "quarter-br": "Quarter bottom-right",
+                    "none": "None"
+                }
             }
         },
         "sensor": {

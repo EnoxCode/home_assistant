@@ -34,8 +34,24 @@
       "dismiss_all_notifications": {"name": "Dismiss all notifications"},
       "refresh_dashboard": {"name": "Refresh dashboard"}
     },
+    "media_player": {
+      "media_player": {"name": "Media Player"}
+    },
     "select": {
-      "active_page": {"name": "Active page"}
+      "active_page": {"name": "Active page"},
+      "display_mode": {
+        "name": "Display Mode",
+        "state": {
+          "fullscreen": "Fullscreen",
+          "half-top": "Half top",
+          "half-bottom": "Half bottom",
+          "quarter-tl": "Quarter top-left",
+          "quarter-tr": "Quarter top-right",
+          "quarter-bl": "Quarter bottom-left",
+          "quarter-br": "Quarter bottom-right",
+          "none": "None"
+        }
+      }
     },
     "sensor": {
       "current_page": {"name": "Current page"},
