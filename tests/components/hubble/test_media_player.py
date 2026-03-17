@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -190,6 +191,80 @@ async def test_extra_state_attributes_announcing(
     """Announcing extra attribute is populated from MOCK_MEDIA_STATE."""
     state = hass.states.get("media_player.kitchen_screen_media_player")
     assert state.attributes.get("announcing") is False
+
+
+# ── Position extrapolation ───────────────────────────────────────────────────
+
+
+async def test_media_position_extrapolated_when_playing(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """media_position adds elapsed time since mediaPositionUpdatedAt when playing."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+
+    # Freeze time: 10 seconds after the position timestamp in MOCK_MEDIA_STATE
+    # (mediaPositionUpdatedAt = "2026-03-17T10:23:45.123+00:00")
+    frozen = datetime.datetime(2026, 3, 17, 10, 23, 55, 123000, tzinfo=datetime.UTC)
+    with patch("homeassistant.util.dt.utcnow", return_value=frozen):
+        # Trigger a state update so properties are recomputed with the frozen time.
+        # hass.states.get() returns already-evaluated attribute values; we must call
+        # async_write_ha_state() (via the WS handler) while the patch is active.
+        coordinator._handle_ws_event("media:state", dict(MOCK_MEDIA_STATE))
+        await hass.async_block_till_done()
+        state = hass.states.get("media_player.kitchen_screen_media_player")
+        # position=42.0 + 10s elapsed = 52.0
+        assert state.attributes.get("media_position") == pytest.approx(52.0, abs=0.1)
+
+
+async def test_media_position_raw_when_paused(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """media_position returns raw value (no extrapolation) when not playing."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event(
+        "media:state", {**MOCK_MEDIA_STATE, "state": "paused", "mediaPosition": 42.0}
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("media_position") == 42.0
+
+
+async def test_media_position_raw_when_updated_at_unparsable(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """media_position falls back to raw value when timestamp cannot be parsed."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+    coordinator._handle_ws_event(
+        "media:state",
+        {
+            **MOCK_MEDIA_STATE,
+            "state": "playing",
+            "mediaPositionUpdatedAt": "not-a-date",
+        },
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get("media_player.kitchen_screen_media_player")
+    assert state.attributes.get("media_position") == 42.0
+
+
+async def test_media_position_capped_at_duration(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """media_position never exceeds mediaDuration."""
+    entry, _ = setup_media_player
+    coordinator = entry.runtime_data
+
+    # Advance far past the timestamp (elapsed >> duration of 354.0)
+    frozen = datetime.datetime(2026, 3, 17, 10, 40, 25, 123000, tzinfo=datetime.UTC)
+    with patch("homeassistant.util.dt.utcnow", return_value=frozen):
+        coordinator._handle_ws_event("media:state", dict(MOCK_MEDIA_STATE))
+        await hass.async_block_till_done()
+        state = hass.states.get("media_player.kitchen_screen_media_player")
+        # Duration is 354.0 — must be capped
+        assert state.attributes.get("media_position") <= 354.0
 
 
 async def test_entities_unavailable_when_initial_fetch_fails(

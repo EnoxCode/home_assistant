@@ -15,6 +15,7 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+import homeassistant.util.dt as dt_util
 
 from .api import HubbleError
 from .const import DOMAIN
@@ -157,6 +158,36 @@ class HubbleMediaPlayer(MediaPlayerEntity):
     def is_volume_muted(self) -> bool | None:
         """Return True if volume is muted."""
         return (self.coordinator.media_state or {}).get("isVolumeMuted")
+
+    @property
+    def media_position(self) -> int | None:
+        """Return extrapolated position when playing, raw position otherwise."""
+        if self.coordinator.media_state is None:
+            return None
+        pos = self.coordinator.media_state.get("mediaPosition")
+        updated_at_str = self.coordinator.media_state.get("mediaPositionUpdatedAt")
+        if (
+            self.coordinator.media_state.get("state") != "playing"
+            or pos is None
+            or updated_at_str is None
+        ):
+            return pos
+        updated_at = dt_util.parse_datetime(updated_at_str)
+        if updated_at is None:
+            return pos
+        elapsed = (dt_util.utcnow() - updated_at).total_seconds()
+        duration = self.coordinator.media_state.get("mediaDuration") or float("inf")
+        return min(pos + elapsed, duration)
+
+    @property
+    def media_position_updated_at(self):
+        """Return the timestamp when media position was last updated."""
+        if self.coordinator.media_state is None:
+            return None
+        raw = self.coordinator.media_state.get("mediaPositionUpdatedAt")
+        if raw is None:
+            return None
+        return dt_util.parse_datetime(raw)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
