@@ -13,6 +13,9 @@ from homeassistant.components.media_player import (
     MediaType,
 )
 from homeassistant.components import media_source
+from homeassistant.components.media_player.browse_media import (
+    async_process_play_media_url,
+)
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -298,7 +301,7 @@ class HubbleMediaPlayer(MediaPlayerEntity):
             sourced = await media_source.async_resolve_media(
                 self.hass, media_id, self.entity_id
             )
-            media_id = sourced.url
+            media_id = async_process_play_media_url(self.hass, sourced.url)
 
         try:
             await self.coordinator.client.async_media_play(
