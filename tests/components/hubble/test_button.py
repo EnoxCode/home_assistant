@@ -1,13 +1,10 @@
 """Tests for the Hubble button platform."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
-from homeassistant.const import STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
-
-from . import MOCK_DASHBOARD_STATE, MOCK_MODULES, MOCK_NOTIFY_COUNT
 
 
 @pytest.mark.parametrize(
@@ -56,6 +53,7 @@ async def test_next_widget_204_does_not_raise(
     """Pressing next_widget when no widgets exist (returns None) does not raise."""
     coordinator = setup_integration.runtime_data
     coordinator.client.async_next_widget = AsyncMock(return_value=None)
+    coordinator.async_request_refresh = AsyncMock()
 
     await hass.services.async_call(
         "button",
@@ -65,3 +63,4 @@ async def test_next_widget_204_does_not_raise(
     )
 
     coordinator.client.async_next_widget.assert_called_once()
+    coordinator.async_request_refresh.assert_called_once()

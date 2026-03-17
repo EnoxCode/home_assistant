@@ -92,7 +92,7 @@ class HubbleApiClient:
         url = f"{self._base_url}{path}"
         try:
             async with self._session.post(
-                url, headers=self._headers, json=payload or {}
+                url, headers=self._headers, json=payload if payload is not None else {}
             ) as response:
                 if response.status == 401:
                     raise HubbleAuthError("Invalid API key")
