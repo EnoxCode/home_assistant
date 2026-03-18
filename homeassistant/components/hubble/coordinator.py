@@ -19,7 +19,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError
+from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError, HubbleError
 from .const import (
     CONF_SCREEN_POLL_INTERVAL,
     CONF_SCREEN_STATUS_COMMAND,
@@ -109,6 +109,8 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # References to the media player and display mode entities for WS updates.
         self.media_player_entity: Entity | None = None
         self.display_mode_entity: Entity | None = None
+        # Reference to the active widget select entity for WS-driven option rebuilds.
+        self.active_widget_entity: Entity | None = None
         # Screen coordinator — set by async_setup_entry after creation.
         self.screen_coordinator: HubbleScreenCoordinator | None = None
 
@@ -196,6 +198,11 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
             return
 
+        # widget:added / widget:removed — selectable widget list may have changed.
+        if event in ("widget:added", "widget:removed"):
+            self.hass.async_create_task(self._async_refresh_discovery())
+            return
+
         # Core events — patch coordinator data in place.
         current = dict(self.data) if self.data else {}
         match event:
@@ -219,6 +226,16 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.debug("Unhandled core WebSocket event: %s", event)
                 return
         self.async_set_updated_data(current)
+
+    async def _async_refresh_discovery(self) -> None:
+        """Re-fetch discovery and notify the active widget entity of option changes."""
+        try:
+            self.discovery = await self.client.async_discover()
+        except HubbleError:
+            _LOGGER.error("Failed to refresh Hubble discovery data")
+            return
+        if self.active_widget_entity is not None:
+            self.active_widget_entity.async_write_ha_state()
 
     # ── WebSocket lifecycle ─────────────────────────────────────────────────────
 

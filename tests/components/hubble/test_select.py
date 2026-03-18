@@ -2,10 +2,11 @@
 
 from unittest.mock import AsyncMock
 
+from homeassistant.components.hubble.api import HubbleConnectionError
 from homeassistant.components.hubble.websocket import _DEFAULT_EVENTS
 from homeassistant.core import HomeAssistant
 
-from . import MOCK_STATE
+from . import MOCK_DISCOVERY, MOCK_STATE
 
 
 async def test_select_options_are_page_slugs(
@@ -79,3 +80,56 @@ async def test_ws_client_default_events_include_widget_events(
     assert "widget:selected" in _DEFAULT_EVENTS
     assert "widget:added" in _DEFAULT_EVENTS
     assert "widget:removed" in _DEFAULT_EVENTS
+
+
+async def test_coordinator_widget_added_triggers_discovery_refresh(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """widget:added WS event causes coordinator to re-fetch discovery."""
+    coordinator = setup_integration.runtime_data
+    new_discovery = {
+        **MOCK_DISCOVERY,
+        "selectableWidgets": [
+            {
+                "widgetId": 99,
+                "pageId": 1,
+                "visualization": "clock",
+                "title": "New Widget",
+            },
+        ],
+    }
+    coordinator.client.async_discover = AsyncMock(return_value=new_discovery)
+
+    coordinator._handle_ws_event("widget:added", {"widgetId": 99})
+    await hass.async_block_till_done()
+
+    assert coordinator.discovery["selectableWidgets"][0]["widgetId"] == 99
+
+
+async def test_coordinator_widget_removed_triggers_discovery_refresh(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """widget:removed WS event causes coordinator to re-fetch discovery."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_discover = AsyncMock(
+        return_value={**MOCK_DISCOVERY, "selectableWidgets": []}
+    )
+
+    coordinator._handle_ws_event("widget:removed", {"widgetId": 5})
+    await hass.async_block_till_done()
+
+    assert coordinator.discovery["selectableWidgets"] == []
+
+
+async def test_coordinator_discovery_refresh_failure_does_not_raise(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Discovery refresh failure logs an error and does not raise or crash."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_discover = AsyncMock(
+        side_effect=HubbleConnectionError("unreachable")
+    )
+
+    coordinator._handle_ws_event("widget:added", {})
+    await hass.async_block_till_done()
+    # No exception — test passes if we get here
