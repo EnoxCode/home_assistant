@@ -22,6 +22,9 @@ _DEFAULT_EVENTS: frozenset[str] = frozenset(
         "notification:dismissed",
         "media:state",
         "screen:changed",
+        "widget:selected",
+        "widget:added",
+        "widget:removed",
     }
 )
 

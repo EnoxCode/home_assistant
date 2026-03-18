@@ -80,13 +80,7 @@ async def test_connect_sends_auth_and_subscribe() -> None:
     # Second send: subscribe with core events
     second_call = json.loads(ws.send_str.call_args_list[1][0][0])
     assert second_call["action"] == "subscribe"
-    assert set(second_call["events"]) == {
-        "page:changed",
-        "notification",
-        "notification:dismissed",
-        "media:state",
-        "screen:changed",
-    }
+    assert set(second_call["events"]) == _DEFAULT_EVENTS
 
 
 async def test_connect_raises_auth_error_on_error_response() -> None:

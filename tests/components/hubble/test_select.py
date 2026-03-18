@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock
 
+from homeassistant.components.hubble.websocket import _DEFAULT_EVENTS
 from homeassistant.core import HomeAssistant
 
 from . import MOCK_STATE
@@ -69,3 +70,12 @@ async def test_select_unknown_option_does_not_call_api(
     )
     await entity.async_select_option("nonexistent-slug")
     coordinator.client.async_set_active_page.assert_not_called()
+
+
+async def test_ws_client_default_events_include_widget_events(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """widget:selected, widget:added, widget:removed are in _DEFAULT_EVENTS."""
+    assert "widget:selected" in _DEFAULT_EVENTS
+    assert "widget:added" in _DEFAULT_EVENTS
+    assert "widget:removed" in _DEFAULT_EVENTS
