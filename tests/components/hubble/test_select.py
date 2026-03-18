@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock
 
+import pytest
+
 from homeassistant.components.hubble.api import (
     HubbleConnectionError,
     HubbleNotFoundError,
@@ -254,7 +256,9 @@ async def test_active_widget_select_none_option_deselects(
 
 
 async def test_active_widget_select_404_logs_warning_does_not_raise(
-    hass: HomeAssistant, setup_integration
+    hass: HomeAssistant,
+    setup_integration,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """404 from POST logs a warning and does not raise HomeAssistantError."""
     coordinator = setup_integration.runtime_data
@@ -269,6 +273,7 @@ async def test_active_widget_select_404_logs_warning_does_not_raise(
     )
     # Must not raise
     await entity.async_select_option("Pasta Timer (countdown)")
+    assert "not selectable on the active page" in caplog.text
 
 
 async def test_active_widget_unavailable_when_no_selectable_widgets_key(

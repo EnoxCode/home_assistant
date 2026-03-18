@@ -70,8 +70,7 @@ async def async_setup_entry(
     coordinator.active_widget_entity = active_widget
 
     def on_widget_selected(data: dict[str, Any]) -> None:
-        active_widget._current_widget_id = data.get("widgetId")  # noqa: SLF001
-        active_widget.async_write_ha_state()
+        active_widget.set_selected_widget(data.get("widgetId"))
 
     coordinator.register_core_handler("widget:selected", on_widget_selected)
 
@@ -232,10 +231,19 @@ class HubbleActiveWidgetSelect(CoordinatorEntity[HubbleCoordinator], SelectEntit
         return self._format_widget(widget) if widget else "none"
 
     def _handle_coordinator_update(self) -> None:
-        """Sync _current_widget_id from the REST-polled coordinator data."""
+        """Sync _current_widget_id from the REST-polled coordinator data.
+
+        REST is always authoritative — this intentionally overwrites any
+        value set by a preceding widget:selected WS event.
+        """
         if self.coordinator.data:
             self._current_widget_id = self.coordinator.data.get("selectedWidgetId")
         super()._handle_coordinator_update()
+
+    def set_selected_widget(self, widget_id: int | None) -> None:
+        """Update the selected widget and push a state change to HA."""
+        self._current_widget_id = widget_id
+        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         """Send the selected widget ID (or null) to the Hubble API."""
