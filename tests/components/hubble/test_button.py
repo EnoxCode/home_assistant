@@ -14,7 +14,10 @@ from homeassistant.core import HomeAssistant
         ("button.kitchen_screen_previous_page", "async_previous_page"),
         ("button.kitchen_screen_next_widget", "async_next_widget"),
         ("button.kitchen_screen_previous_widget", "async_previous_widget"),
-        ("button.kitchen_screen_dismiss_all_notifications", "async_dismiss_all_notifications"),
+        (
+            "button.kitchen_screen_dismiss_all_notifications",
+            "async_dismiss_all_notifications",
+        ),
         ("button.kitchen_screen_refresh_dashboard", "async_refresh_dashboard"),
     ],
 )
@@ -64,3 +67,42 @@ async def test_next_widget_204_does_not_raise(
 
     coordinator.client.async_next_widget.assert_called_once()
     coordinator.async_request_refresh.assert_called_once()
+
+
+async def test_command_button_created(
+    hass: HomeAssistant,
+    setup_integration,
+) -> None:
+    """A non-builtin command from discovery creates a button entity."""
+    state = hass.states.get("button.kitchen_screen_test_command")
+    assert state is not None
+
+
+async def test_command_button_press(
+    hass: HomeAssistant,
+    setup_integration,
+) -> None:
+    """Pressing a command button calls async_execute_command with the correct slug."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_execute_command = AsyncMock(return_value={"ok": True})
+    coordinator.async_request_refresh = AsyncMock()
+
+    await hass.services.async_call(
+        "button",
+        "press",
+        {"entity_id": "button.kitchen_screen_test_command"},
+        blocking=True,
+    )
+
+    coordinator.client.async_execute_command.assert_called_once_with("test-command")
+    coordinator.async_request_refresh.assert_called_once()
+
+
+async def test_builtin_commands_not_exposed_as_buttons(
+    hass: HomeAssistant,
+    setup_integration,
+) -> None:
+    """Builtin commands do not get button entities."""
+    assert hass.states.get("button.kitchen_screen_screen_off") is None
+    assert hass.states.get("button.kitchen_screen_screen_on") is None
+    assert hass.states.get("button.kitchen_screen_screen_status") is None

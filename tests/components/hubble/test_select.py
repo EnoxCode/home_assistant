@@ -2,8 +2,6 @@
 
 from unittest.mock import AsyncMock
 
-import pytest
-
 from homeassistant.core import HomeAssistant
 
 from . import MOCK_STATE

@@ -79,6 +79,13 @@ MOCK_DISCOVERY = {
             "builtin": True,
             "executeUrl": "/api/commands/screen-status/execute",
         },
+        {
+            "slug": "test-command",
+            "label": "Test Command",
+            "description": "A user-defined test command.",
+            "builtin": False,
+            "executeUrl": "/api/commands/test-command/execute",
+        },
     ],
     "modules": [
         {

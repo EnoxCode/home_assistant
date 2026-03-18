@@ -66,10 +66,16 @@ async def async_setup_entry(
 ) -> None:
     """Set up Hubble button entities from a config entry."""
     coordinator: HubbleCoordinator = entry.runtime_data
-    async_add_entities(
+    static_buttons = [
         HubbleButton(coordinator, entry, description)
         for description in BUTTON_DESCRIPTIONS
-    )
+    ]
+    command_buttons = [
+        HubbleCommandButton(coordinator, entry, cmd)
+        for cmd in coordinator.discovery.get("commands", [])
+        if not cmd.get("builtin", True)
+    ]
+    async_add_entities([*static_buttons, *command_buttons])
 
 
 class HubbleButton(CoordinatorEntity[HubbleCoordinator], ButtonEntity):
@@ -97,4 +103,32 @@ class HubbleButton(CoordinatorEntity[HubbleCoordinator], ButtonEntity):
     async def async_press(self) -> None:
         """Handle button press."""
         await self.entity_description.press_fn(self.coordinator.client)
+        await self.coordinator.async_request_refresh()
+
+
+class HubbleCommandButton(CoordinatorEntity[HubbleCoordinator], ButtonEntity):
+    """A Hubble button entity for a user-defined (non-builtin) command."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: HubbleCoordinator,
+        entry: HubbleConfigEntry,
+        command: dict[str, Any],
+    ) -> None:
+        """Initialise the command button."""
+        super().__init__(coordinator)
+        self._slug = command["slug"]
+        self._attr_name = command["label"]
+        self._attr_unique_id = f"{entry.entry_id}_command_{self._slug}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.data.get(CONF_NAME, "Hubble"),
+            manufacturer="Hubble",
+        )
+
+    async def async_press(self) -> None:
+        """Execute the command."""
+        await self.coordinator.client.async_execute_command(self._slug)
         await self.coordinator.async_request_refresh()

@@ -1,14 +1,20 @@
 """Tests for the Hubble sensor platform."""
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.components.hubble.api import HubbleConnectionError
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.core import HomeAssistant
 
-from . import MOCK_DASHBOARD_STATE, MOCK_NOTIFY_COUNT, MOCK_STATE, MOCK_TIMER_DISCOVERY, MOCK_USER_INPUT
+from . import (
+    MOCK_DASHBOARD_STATE,
+    MOCK_NOTIFY_COUNT,
+    MOCK_STATE,
+    MOCK_TIMER_DISCOVERY,
+    MOCK_USER_INPUT,
+)
 
 from tests.common import MockConfigEntry
 
@@ -45,7 +51,9 @@ async def test_sensor_unavailable_no_data(hass: HomeAssistant) -> None:
             side_effect=HubbleConnectionError("boom")
         )
         mock_client.async_get_notify_count = AsyncMock(return_value=0)
-        mock_client.async_discover = AsyncMock(return_value={"core": {"events": []}, "modules": []})
+        mock_client.async_discover = AsyncMock(
+            return_value={"core": {"events": []}, "modules": []}
+        )
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -90,7 +98,9 @@ async def test_coordinator_fetches_all_endpoints(hass: HomeAssistant) -> None:
         mock_client = mock_cls.return_value
         mock_client.async_get_state = AsyncMock(return_value=MOCK_DASHBOARD_STATE)
         mock_client.async_get_notify_count = AsyncMock(return_value=MOCK_NOTIFY_COUNT)
-        mock_client.async_discover = AsyncMock(return_value={"core": {"events": []}, "modules": []})
+        mock_client.async_discover = AsyncMock(
+            return_value={"core": {"events": []}, "modules": []}
+        )
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -136,8 +146,9 @@ async def test_notification_count_updates(
 
 # ── Timer sensor helpers ───────────────────────────────────────────────────────
 
+
 @asynccontextmanager
-async def _setup_with_timer(hass, connector_state=None):
+async def _setup_with_timer(hass: HomeAssistant, connector_state=None):
     """Set up the integration with hubble-timer in discovery."""
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -168,6 +179,7 @@ async def _setup_with_timer(hass, connector_state=None):
 
 # ── Timer sensor: creation ─────────────────────────────────────────────────────
 
+
 async def test_timer_sensors_created_for_each_instance(hass: HomeAssistant) -> None:
     """One timer sensor is created per discovered timer instance."""
     async with _setup_with_timer(hass):
@@ -191,6 +203,7 @@ async def test_timer_sensor_default_state_is_idle(hass: HomeAssistant) -> None:
 
 
 # ── Timer sensor: initial state from connector-state ──────────────────────────
+
 
 async def test_timer_sensor_initial_state_paused_from_connector_state(
     hass: HomeAssistant,
@@ -257,9 +270,10 @@ async def test_timer_sensor_initial_state_resumed_without_started_no_finishes_at
 
 # ── Timer sensor: WS event state transitions ──────────────────────────────────
 
+
 async def test_timer_started_event_sets_active_state(hass: HomeAssistant) -> None:
     """timer:started WS event sets state to active with finishes_at."""
-    fake_now = datetime(2026, 3, 17, 12, 0, 0, tzinfo=timezone.utc)
+    fake_now = datetime(2026, 3, 17, 12, 0, 0, tzinfo=UTC)
 
     async with _setup_with_timer(hass) as (entry, _):
         coordinator = entry.runtime_data
@@ -317,7 +331,7 @@ async def test_timer_resumed_recomputes_finishes_at(hass: HomeAssistant) -> None
     Drive to paused state via WS events (not connector-state) so that _duration
     is set from timer:started before timer:paused clears finishes_at.
     """
-    fake_now = datetime(2026, 3, 17, 12, 0, 0, tzinfo=timezone.utc)
+    fake_now = datetime(2026, 3, 17, 12, 0, 0, tzinfo=UTC)
 
     async with _setup_with_timer(hass) as (entry, _):
         coordinator = entry.runtime_data
@@ -383,7 +397,12 @@ async def test_timer_finished_event(hass: HomeAssistant) -> None:
 async def test_timer_reset_event_clears_state(hass: HomeAssistant) -> None:
     """timer:reset WS event returns sensor to idle, clears all attributes."""
     connector_state = {
-        "timer:started": {"slug": "timer-1", "mode": "countdown", "duration": 300, "label": "Test"},
+        "timer:started": {
+            "slug": "timer-1",
+            "mode": "countdown",
+            "duration": 300,
+            "label": "Test",
+        },
     }
     async with _setup_with_timer(hass, connector_state=connector_state) as (entry, _):
         coordinator = entry.runtime_data
@@ -407,6 +426,7 @@ async def test_timer_reset_event_clears_state(hass: HomeAssistant) -> None:
 
 
 # ── Timer sensor: slug dispatch ────────────────────────────────────────────────
+
 
 async def test_ws_event_for_one_slug_does_not_affect_other(
     hass: HomeAssistant,
