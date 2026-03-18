@@ -122,5 +122,20 @@ hass -c config                           # starts on port 40000
 
 The integration won't appear in the HA UI "Add Integration" search unless `homeassistant/generated/config_flows.py` and `homeassistant/generated/integrations.json` include `"hubble"`. These are already updated on the `hubble-integration` branch. In CI they are regenerated automatically by `hassfest`.
 
+### Pre-commit hooks
+
+The pre-commit suite runs ruff, ruff-format, mypy, and pylint on every commit. **Always run lint before committing** to catch issues early:
+
+```bash
+ruff check --fix homeassistant/components/hubble/ tests/components/hubble/
+ruff format homeassistant/components/hubble/ tests/components/hubble/
+```
+
+Common pylint failures to watch for:
+- **`hass-argument-type`**: Any helper function in tests that accepts `hass` must type it as `hass: HomeAssistant`, not plain `hass`.
+- **Unused imports / unsorted imports**: ruff `--fix` handles these automatically.
+
+`./script/lint_and_test.py` compares against `upstream/dev` which doesn't exist in this devcontainer — it will report no changed files. Run ruff and pytest directly instead.
+
 ### Known dev environment issue
 The `hassfest` pre-commit hook requires `libturbojpeg` (system library) which is not installed in this devcontainer. Use `--no-verify` when committing changes that trigger hassfest (i.e. changes to `homeassistant/components/hubble/` alongside generated files). The CI pipeline runs hassfest correctly.
