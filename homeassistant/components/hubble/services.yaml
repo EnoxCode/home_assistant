@@ -49,15 +49,13 @@ dismiss_notification:
 
 start_timer:
   fields:
-    config_entry_id:
+    entity_id:
       required: true
       selector:
-        config_entry:
+        entity:
           integration: hubble
-    slug:
-      required: true
-      selector:
-        text: {}
+          domain: sensor
+          device_class: enum
     duration:
       selector:
         number:
@@ -69,36 +67,30 @@ start_timer:
 
 pause_timer:
   fields:
-    config_entry_id:
+    entity_id:
       required: true
       selector:
-        config_entry:
+        entity:
           integration: hubble
-    slug:
-      required: true
-      selector:
-        text: {}
+          domain: sensor
+          device_class: enum
 
 resume_timer:
   fields:
-    config_entry_id:
+    entity_id:
       required: true
       selector:
-        config_entry:
+        entity:
           integration: hubble
-    slug:
-      required: true
-      selector:
-        text: {}
+          domain: sensor
+          device_class: enum
 
 reset_timer:
   fields:
-    config_entry_id:
+    entity_id:
       required: true
       selector:
-        config_entry:
+        entity:
           integration: hubble
-    slug:
-      required: true
-      selector:
-        text: {}
+          domain: sensor
+          device_class: enum

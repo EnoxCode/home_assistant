@@ -116,13 +116,9 @@
       "name": "Start timer",
       "description": "Starts or restarts a Hubble timer widget.",
       "fields": {
-        "config_entry_id": {
-          "name": "Hubble instance",
-          "description": "The Hubble dashboard."
-        },
-        "slug": {
-          "name": "Slug",
-          "description": "Timer widget slug (e.g. timer-1)."
+        "entity_id": {
+          "name": "Timer entity",
+          "description": "The Hubble timer sensor entity to start."
         },
         "duration": {
           "name": "Duration",
@@ -138,13 +134,9 @@
       "name": "Pause timer",
       "description": "Pauses a running Hubble timer.",
       "fields": {
-        "config_entry_id": {
-          "name": "Hubble instance",
-          "description": "The Hubble dashboard."
-        },
-        "slug": {
-          "name": "Slug",
-          "description": "Timer widget slug."
+        "entity_id": {
+          "name": "Timer entity",
+          "description": "The Hubble timer sensor entity to pause."
         }
       }
     },
@@ -152,13 +144,9 @@
       "name": "Resume timer",
       "description": "Resumes a paused Hubble timer.",
       "fields": {
-        "config_entry_id": {
-          "name": "Hubble instance",
-          "description": "The Hubble dashboard."
-        },
-        "slug": {
-          "name": "Slug",
-          "description": "Timer widget slug."
+        "entity_id": {
+          "name": "Timer entity",
+          "description": "The Hubble timer sensor entity to resume."
         }
       }
     },
@@ -166,13 +154,9 @@
       "name": "Reset timer",
       "description": "Resets a Hubble timer to idle.",
       "fields": {
-        "config_entry_id": {
-          "name": "Hubble instance",
-          "description": "The Hubble dashboard."
-        },
-        "slug": {
-          "name": "Slug",
-          "description": "Timer widget slug."
+        "entity_id": {
+          "name": "Timer entity",
+          "description": "The Hubble timer sensor entity to reset."
         }
       }
     }

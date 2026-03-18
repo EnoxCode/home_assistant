@@ -6,7 +6,11 @@ from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -222,6 +226,8 @@ class HubbleTimerSensor(CoordinatorEntity[HubbleCoordinator], SensorEntity):
 
     _attr_has_entity_name = True
     _attr_icon = "mdi:timer"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["idle", "active", "paused", "finished"]
 
     def __init__(
         self,

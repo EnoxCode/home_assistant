@@ -20,7 +20,11 @@ from homeassistant.exceptions import (
     HomeAssistantError,
     ServiceValidationError,
 )
-from homeassistant.helpers import config_validation as cv, selector
+from homeassistant.helpers import (
+    config_validation as cv,
+    entity_registry as er,
+    selector,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -66,21 +70,15 @@ _DISMISS_NOTIFICATION_SCHEMA = vol.Schema(
 
 _START_TIMER_SCHEMA = vol.Schema(
     {
-        vol.Required("config_entry_id"): selector.ConfigEntrySelector(
-            {"integration": "hubble"}
-        ),
-        vol.Required("slug"): cv.string,
+        vol.Required("entity_id"): cv.entity_id,
         vol.Optional("duration"): vol.All(vol.Coerce(int), vol.Range(min=1)),
         vol.Optional("label"): cv.string,
     }
 )
 
-_TIMER_SLUG_SCHEMA = vol.Schema(
+_TIMER_ENTITY_SCHEMA = vol.Schema(
     {
-        vol.Required("config_entry_id"): selector.ConfigEntrySelector(
-            {"integration": "hubble"}
-        ),
-        vol.Required("slug"): cv.string,
+        vol.Required("entity_id"): cv.entity_id,
     }
 )
 
@@ -101,6 +99,27 @@ def _get_coordinator(hass: HomeAssistant, entry_id: str) -> HubbleCoordinator:
             translation_key="config_entry_not_loaded",
         )
     return entry.runtime_data
+
+
+def _get_slug_and_coordinator(
+    hass: HomeAssistant, entity_id: str
+) -> tuple[str, HubbleCoordinator]:
+    """Resolve a timer entity_id to its slug and coordinator."""
+    ent_reg = er.async_get(hass)
+    reg_entry = ent_reg.async_get(entity_id)
+    if reg_entry is None or reg_entry.config_entry_id is None:
+        raise ServiceValidationError(
+            translation_domain="hubble",
+            translation_key="config_entry_not_found",
+        )
+    state = hass.states.get(entity_id)
+    if state is None:
+        raise ServiceValidationError(
+            translation_domain="hubble",
+            translation_key="config_entry_not_loaded",
+        )
+    slug: str = state.attributes["slug"]
+    return slug, _get_coordinator(hass, reg_entry.config_entry_id)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -133,10 +152,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         await coordinator.async_request_refresh()
 
     async def handle_start_timer(call: ServiceCall) -> None:
-        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        slug, coordinator = _get_slug_and_coordinator(hass, call.data["entity_id"])
         try:
             await coordinator.client.async_timer_start(
-                slug=call.data["slug"],
+                slug=slug,
                 duration=call.data.get("duration"),
                 label=call.data.get("label"),
             )
@@ -145,25 +164,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         # No coordinator refresh — timer sensor state is updated by WS push events.
 
     async def handle_pause_timer(call: ServiceCall) -> None:
-        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        slug, coordinator = _get_slug_and_coordinator(hass, call.data["entity_id"])
         try:
-            await coordinator.client.async_timer_pause(call.data["slug"])
+            await coordinator.client.async_timer_pause(slug)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
         # No coordinator refresh — timer sensor state is updated by WS push events.
 
     async def handle_resume_timer(call: ServiceCall) -> None:
-        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        slug, coordinator = _get_slug_and_coordinator(hass, call.data["entity_id"])
         try:
-            await coordinator.client.async_timer_resume(call.data["slug"])
+            await coordinator.client.async_timer_resume(slug)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
         # No coordinator refresh — timer sensor state is updated by WS push events.
 
     async def handle_reset_timer(call: ServiceCall) -> None:
-        coordinator = _get_coordinator(hass, call.data["config_entry_id"])
+        slug, coordinator = _get_slug_and_coordinator(hass, call.data["entity_id"])
         try:
-            await coordinator.client.async_timer_reset(call.data["slug"])
+            await coordinator.client.async_timer_reset(slug)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
         # No coordinator refresh — timer sensor state is updated by WS push events.
@@ -185,13 +204,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         "hubble", "start_timer", handle_start_timer, schema=_START_TIMER_SCHEMA
     )
     hass.services.async_register(
-        "hubble", "pause_timer", handle_pause_timer, schema=_TIMER_SLUG_SCHEMA
+        "hubble", "pause_timer", handle_pause_timer, schema=_TIMER_ENTITY_SCHEMA
     )
     hass.services.async_register(
-        "hubble", "resume_timer", handle_resume_timer, schema=_TIMER_SLUG_SCHEMA
+        "hubble", "resume_timer", handle_resume_timer, schema=_TIMER_ENTITY_SCHEMA
     )
     hass.services.async_register(
-        "hubble", "reset_timer", handle_reset_timer, schema=_TIMER_SLUG_SCHEMA
+        "hubble", "reset_timer", handle_reset_timer, schema=_TIMER_ENTITY_SCHEMA
     )
     return True
 
