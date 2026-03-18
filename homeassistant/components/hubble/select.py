@@ -13,7 +13,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import HubbleError
+from .api import HubbleError, HubbleNotFoundError
 from .const import DOMAIN
 from .coordinator import HubbleConfigEntry, HubbleCoordinator
 
@@ -66,7 +66,18 @@ async def async_setup_entry(
 
     coordinator.register_core_handler("media:state", on_media_state)
 
-    async_add_entities([HubblePageSelectEntity(coordinator, entry), display])
+    active_widget = HubbleActiveWidgetSelect(coordinator, entry)
+    coordinator.active_widget_entity = active_widget
+
+    def on_widget_selected(data: dict[str, Any]) -> None:
+        active_widget._current_widget_id = data.get("widgetId")  # noqa: SLF001
+        active_widget.async_write_ha_state()
+
+    coordinator.register_core_handler("widget:selected", on_widget_selected)
+
+    async_add_entities(
+        [HubblePageSelectEntity(coordinator, entry), display, active_widget]
+    )
 
 
 class HubblePageSelectEntity(CoordinatorEntity[HubbleCoordinator], SelectEntity):
@@ -167,3 +178,83 @@ class HubbleDisplayModeSelect(SelectEntity):
             await self.coordinator.client.async_media_set_display(option)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+
+
+class HubbleActiveWidgetSelect(CoordinatorEntity[HubbleCoordinator], SelectEntity):
+    """Select entity for the currently focused widget on the Hubble dashboard."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "active_widget"
+    _attr_icon = "mdi:cursor-default-click"
+
+    def __init__(
+        self,
+        coordinator: HubbleCoordinator,
+        entry: HubbleConfigEntry,
+    ) -> None:
+        """Initialise the active widget select entity."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_active_widget"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.data.get(CONF_NAME, "Hubble"),
+            manufacturer="Hubble",
+        )
+        self._current_widget_id: int | None = None
+
+    @staticmethod
+    def _format_widget(widget: dict) -> str:
+        """Return display string: 'Title (viz)' or '#id (viz)' when title is null."""
+        title = widget.get("title")
+        viz = widget.get("visualization", "")
+        return f"{title} ({viz})" if title else f"#{widget['widgetId']} ({viz})"
+
+    @property
+    def available(self) -> bool:
+        """Return True only when discovery contains the selectableWidgets key."""
+        return super().available and "selectableWidgets" in self.coordinator.discovery
+
+    @property
+    def options(self) -> list[str]:
+        """Return 'none' plus a formatted string for every selectable widget."""
+        widgets = self.coordinator.discovery.get("selectableWidgets", [])
+        return ["none"] + [self._format_widget(w) for w in widgets]
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the formatted string for the currently selected widget, or 'none'."""
+        if self._current_widget_id is None:
+            return "none"
+        widgets = self.coordinator.discovery.get("selectableWidgets", [])
+        widget = next(
+            (w for w in widgets if w["widgetId"] == self._current_widget_id), None
+        )
+        return self._format_widget(widget) if widget else "none"
+
+    def _handle_coordinator_update(self) -> None:
+        """Sync _current_widget_id from the REST-polled coordinator data."""
+        if self.coordinator.data:
+            self._current_widget_id = self.coordinator.data.get("selectedWidgetId")
+        super()._handle_coordinator_update()
+
+    async def async_select_option(self, option: str) -> None:
+        """Send the selected widget ID (or null) to the Hubble API."""
+        if option == "none":
+            try:
+                await self.coordinator.client.async_select_widget(None)
+            except HubbleNotFoundError:
+                _LOGGER.warning("Widget deselect returned 404 — unexpected")
+            return
+        widgets = self.coordinator.discovery.get("selectableWidgets", [])
+        for widget in widgets:
+            if self._format_widget(widget) == option:
+                try:
+                    await self.coordinator.client.async_select_widget(
+                        widget["widgetId"]
+                    )
+                except HubbleNotFoundError:
+                    _LOGGER.warning(
+                        "Widget %s is not selectable on the active page",
+                        widget["widgetId"],
+                    )
+                return

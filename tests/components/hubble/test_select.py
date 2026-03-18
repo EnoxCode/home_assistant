@@ -2,7 +2,10 @@
 
 from unittest.mock import AsyncMock
 
-from homeassistant.components.hubble.api import HubbleConnectionError
+from homeassistant.components.hubble.api import (
+    HubbleConnectionError,
+    HubbleNotFoundError,
+)
 from homeassistant.components.hubble.websocket import _DEFAULT_EVENTS
 from homeassistant.core import HomeAssistant
 
@@ -133,3 +136,183 @@ async def test_coordinator_discovery_refresh_failure_does_not_raise(
     coordinator._handle_ws_event("widget:added", {})
     await hass.async_block_till_done()
     # No exception — test passes if we get here
+
+
+# ── Active widget select tests ────────────────────────────────────────────
+
+
+async def test_active_widget_entity_exists(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """The active_widget select entity is registered."""
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert state is not None
+
+
+async def test_active_widget_initial_state_is_none(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Entity starts as 'none' when selectedWidgetId is None in coordinator data."""
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert state.state == "none"
+
+
+async def test_active_widget_options_include_none_and_formatted_widgets(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Options are ['none', 'Pasta Timer (countdown)', 'Oven Timer (countdown)', '#12 (timer)']."""
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert state.attributes["options"] == [
+        "none",
+        "Pasta Timer (countdown)",
+        "Oven Timer (countdown)",
+        "#12 (timer)",
+    ]
+
+
+async def test_active_widget_title_none_formats_as_hash_id(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Widget with null title formats as '#widgetId (visualization)'."""
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert "#12 (timer)" in state.attributes["options"]
+
+
+async def test_active_widget_current_option_from_coordinator_data(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """current_option reflects selectedWidgetId from coordinator REST data."""
+    coordinator = setup_integration.runtime_data
+    coordinator.async_set_updated_data({**MOCK_STATE, "selectedWidgetId": 5})
+    await hass.async_block_till_done()
+
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert state.state == "Pasta Timer (countdown)"
+
+
+async def test_active_widget_ws_event_updates_state(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """widget:selected WS event updates current_option immediately."""
+    coordinator = setup_integration.runtime_data
+    coordinator._handle_ws_event("widget:selected", {"widgetId": 8, "pageId": 1})
+    await hass.async_block_till_done()
+
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert state.state == "Oven Timer (countdown)"
+
+
+async def test_active_widget_ws_event_none_resets_to_none(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """widget:selected with widgetId=null sets state to 'none'."""
+    coordinator = setup_integration.runtime_data
+    coordinator._handle_ws_event("widget:selected", {"widgetId": 5, "pageId": 1})
+    await hass.async_block_till_done()
+    coordinator._handle_ws_event("widget:selected", {"widgetId": None, "pageId": 1})
+    await hass.async_block_till_done()
+
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert state.state == "none"
+
+
+async def test_active_widget_select_option_calls_api(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Selecting an option posts the correct widgetId."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_select_widget = AsyncMock(return_value={"widgetId": 5})
+
+    await hass.services.async_call(
+        "select",
+        "select_option",
+        {
+            "entity_id": "select.kitchen_screen_active_widget",
+            "option": "Pasta Timer (countdown)",
+        },
+        blocking=True,
+    )
+
+    coordinator.client.async_select_widget.assert_called_once_with(5)
+
+
+async def test_active_widget_select_none_option_deselects(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Selecting 'none' calls async_select_widget(None)."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_select_widget = AsyncMock(return_value={"widgetId": None})
+
+    entity = next(
+        e
+        for e in hass.data["entity_components"]["select"].entities
+        if e.unique_id and "active_widget" in e.unique_id
+    )
+    await entity.async_select_option("none")
+
+    coordinator.client.async_select_widget.assert_called_once_with(None)
+
+
+async def test_active_widget_select_404_logs_warning_does_not_raise(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """404 from POST logs a warning and does not raise HomeAssistantError."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_select_widget = AsyncMock(
+        side_effect=HubbleNotFoundError("not selectable")
+    )
+
+    entity = next(
+        e
+        for e in hass.data["entity_components"]["select"].entities
+        if e.unique_id and "active_widget" in e.unique_id
+    )
+    # Must not raise
+    await entity.async_select_option("Pasta Timer (countdown)")
+
+
+async def test_active_widget_unavailable_when_no_selectable_widgets_key(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """Entity is unavailable when discovery has no selectableWidgets key."""
+    coordinator = setup_integration.runtime_data
+    coordinator.discovery = {}
+
+    entity = next(
+        e
+        for e in hass.data["entity_components"]["select"].entities
+        if e.unique_id and "active_widget" in e.unique_id
+    )
+    assert not entity.available
+
+
+async def test_active_widget_options_update_after_widget_added(
+    hass: HomeAssistant, setup_integration
+) -> None:
+    """widget:added → discovery re-fetch → options list includes new widget."""
+    coordinator = setup_integration.runtime_data
+    coordinator.client.async_discover = AsyncMock(
+        return_value={
+            **MOCK_DISCOVERY,
+            "selectableWidgets": [
+                {
+                    "widgetId": 5,
+                    "pageId": 1,
+                    "visualization": "countdown",
+                    "title": "Pasta Timer",
+                },
+                {
+                    "widgetId": 99,
+                    "pageId": 1,
+                    "visualization": "clock",
+                    "title": "Breakfast",
+                },
+            ],
+        }
+    )
+
+    coordinator._handle_ws_event("widget:added", {"widgetId": 99})
+    await hass.async_block_till_done()
+
+    state = hass.states.get("select.kitchen_screen_active_widget")
+    assert "Breakfast (clock)" in state.attributes["options"]
