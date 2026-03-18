@@ -27,18 +27,18 @@
   },
   "entity": {
     "button": {
-      "next_page": {"name": "Next page"},
-      "previous_page": {"name": "Previous page"},
-      "next_widget": {"name": "Next widget"},
-      "previous_widget": {"name": "Previous widget"},
-      "dismiss_all_notifications": {"name": "Dismiss all notifications"},
-      "refresh_dashboard": {"name": "Refresh dashboard"}
+      "next_page": { "name": "Next page" },
+      "previous_page": { "name": "Previous page" },
+      "next_widget": { "name": "Next widget" },
+      "previous_widget": { "name": "Previous widget" },
+      "dismiss_all_notifications": { "name": "Dismiss all notifications" },
+      "refresh_dashboard": { "name": "Refresh dashboard" }
     },
     "media_player": {
-      "media_player": {"name": "Media Player"}
+      "media_player": { "name": "Media Player" }
     },
     "select": {
-      "active_page": {"name": "Active page"},
+      "active_page": { "name": "Active page" },
       "display_mode": {
         "name": "Display Mode",
         "state": {
@@ -54,9 +54,12 @@
       }
     },
     "sensor": {
-      "current_page": {"name": "Current page"},
-      "module_count": {"name": "Module count"},
-      "notification_count": {"name": "Notification count"}
+      "current_page": { "name": "Current page" },
+      "module_count": { "name": "Module count" },
+      "notification_count": { "name": "Notification count" }
+    },
+    "switch": {
+      "hubble_screen": { "name": "Screen" }
     }
   },
   "services": {
@@ -184,7 +187,9 @@
     }
   },
   "exceptions": {
-    "config_entry_not_found": {"message": "Config entry not found."},
-    "config_entry_not_loaded": {"message": "Hubble integration is not loaded."}
+    "config_entry_not_found": { "message": "Config entry not found." },
+    "config_entry_not_loaded": {
+      "message": "Hubble integration is not loaded."
+    }
   }
 }

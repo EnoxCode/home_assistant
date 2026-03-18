@@ -85,6 +85,7 @@ async def test_connect_sends_auth_and_subscribe() -> None:
         "notification",
         "notification:dismissed",
         "media:state",
+        "screen:changed",
     }
 
 

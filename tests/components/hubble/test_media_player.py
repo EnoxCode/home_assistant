@@ -11,8 +11,10 @@ from homeassistant.components.hubble.api import HubbleConnectionError
 from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 from . import (
+    MOCK_COMMAND_EXECUTE_RESULT,
     MOCK_DASHBOARD_STATE,
     MOCK_DISCOVERY,
     MOCK_MEDIA_STATE,
@@ -52,6 +54,9 @@ async def setup_media_player(hass: HomeAssistant):
         mock_client.async_get_connector_state = AsyncMock(return_value={})
         mock_client.async_media_get_state = AsyncMock(
             return_value=dict(MOCK_MEDIA_STATE)
+        )
+        mock_client.async_execute_command = AsyncMock(
+            return_value=dict(MOCK_COMMAND_EXECUTE_RESULT)
         )
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -338,6 +343,9 @@ async def test_entities_unavailable_when_initial_fetch_fails(
         mock_client.async_media_get_state = AsyncMock(
             side_effect=HubbleConnectionError("timeout")
         )
+        mock_client.async_execute_command = AsyncMock(
+            return_value=dict(MOCK_COMMAND_EXECUTE_RESULT)
+        )
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
@@ -352,33 +360,49 @@ async def test_entities_unavailable_when_initial_fetch_fails(
 # ── Service methods ───────────────────────────────────────────────────────────
 
 
-async def test_turn_on_calls_api(hass: HomeAssistant, setup_media_player) -> None:
+async def test_turn_on_calls_screen_on_command(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """turn_on executes the screen-on command via the commands API."""
     entry, mock_client = setup_media_player
-    mock_client.async_media_turn_on = AsyncMock(return_value={"success": True})
+    mock_client.async_execute_command = AsyncMock(
+        return_value={"ok": True, "stdout": "true", "stderr": "", "exitCode": 0}
+    )
     await hass.services.async_call(
-        "media_player", "turn_on",
+        "media_player",
+        "turn_on",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
-    mock_client.async_media_turn_on.assert_called_once()
+    mock_client.async_execute_command.assert_any_call("screen-on")
 
 
-async def test_turn_off_calls_api(hass: HomeAssistant, setup_media_player) -> None:
+async def test_turn_off_calls_screen_off_and_stop(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """turn_off executes the screen-off command and stops media playback."""
     entry, mock_client = setup_media_player
-    mock_client.async_media_turn_off = AsyncMock(return_value={"success": True})
+    mock_client.async_execute_command = AsyncMock(
+        return_value={"ok": True, "stdout": "false", "stderr": "", "exitCode": 0}
+    )
+    mock_client.async_media_stop = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "turn_off",
+        "media_player",
+        "turn_off",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
-    mock_client.async_media_turn_off.assert_called_once()
+    mock_client.async_execute_command.assert_any_call("screen-off")
+    mock_client.async_media_stop.assert_called_once()
 
 
 async def test_media_play_calls_resume(hass: HomeAssistant, setup_media_player) -> None:
+    """media_play service calls async_media_resume on the client."""
     entry, mock_client = setup_media_player
     mock_client.async_media_resume = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "media_play",
+        "media_player",
+        "media_play",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
@@ -386,10 +410,12 @@ async def test_media_play_calls_resume(hass: HomeAssistant, setup_media_player) 
 
 
 async def test_media_pause_calls_api(hass: HomeAssistant, setup_media_player) -> None:
+    """media_pause service calls async_media_pause on the client."""
     entry, mock_client = setup_media_player
     mock_client.async_media_pause = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "media_pause",
+        "media_player",
+        "media_pause",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
@@ -397,10 +423,12 @@ async def test_media_pause_calls_api(hass: HomeAssistant, setup_media_player) ->
 
 
 async def test_media_stop_calls_api(hass: HomeAssistant, setup_media_player) -> None:
+    """media_stop service calls async_media_stop on the client."""
     entry, mock_client = setup_media_player
     mock_client.async_media_stop = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "media_stop",
+        "media_player",
+        "media_stop",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
@@ -408,12 +436,14 @@ async def test_media_stop_calls_api(hass: HomeAssistant, setup_media_player) -> 
 
 
 async def test_volume_set_calls_api(hass: HomeAssistant, setup_media_player) -> None:
+    """volume_set service calls async_media_set_volume_level with correct level."""
     entry, mock_client = setup_media_player
     mock_client.async_media_set_volume_level = AsyncMock(
         return_value={"success": True, "volumeLevel": 0.5, "isVolumeMuted": False}
     )
     await hass.services.async_call(
-        "media_player", "volume_set",
+        "media_player",
+        "volume_set",
         {"entity_id": "media_player.kitchen_screen_media_player", "volume_level": 0.5},
         blocking=True,
     )
@@ -421,38 +451,49 @@ async def test_volume_set_calls_api(hass: HomeAssistant, setup_media_player) -> 
 
 
 async def test_mute_volume_calls_api(hass: HomeAssistant, setup_media_player) -> None:
+    """volume_mute service calls async_media_mute_volume with the mute flag."""
     entry, mock_client = setup_media_player
     mock_client.async_media_mute_volume = AsyncMock(
         return_value={"success": True, "volumeLevel": 0.7, "isVolumeMuted": True}
     )
     await hass.services.async_call(
-        "media_player", "volume_mute",
-        {"entity_id": "media_player.kitchen_screen_media_player", "is_volume_muted": True},
+        "media_player",
+        "volume_mute",
+        {
+            "entity_id": "media_player.kitchen_screen_media_player",
+            "is_volume_muted": True,
+        },
         blocking=True,
     )
     mock_client.async_media_mute_volume.assert_called_once_with(True)
 
 
 async def test_volume_up_calls_step_up(hass: HomeAssistant, setup_media_player) -> None:
+    """volume_up service calls async_media_volume_step with 'up'."""
     entry, mock_client = setup_media_player
     mock_client.async_media_volume_step = AsyncMock(
         return_value={"success": True, "volumeLevel": 0.8, "isVolumeMuted": False}
     )
     await hass.services.async_call(
-        "media_player", "volume_up",
+        "media_player",
+        "volume_up",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
     mock_client.async_media_volume_step.assert_called_once_with("up")
 
 
-async def test_volume_down_calls_step_down(hass: HomeAssistant, setup_media_player) -> None:
+async def test_volume_down_calls_step_down(
+    hass: HomeAssistant, setup_media_player
+) -> None:
+    """volume_down service calls async_media_volume_step with 'down'."""
     entry, mock_client = setup_media_player
     mock_client.async_media_volume_step = AsyncMock(
         return_value={"success": True, "volumeLevel": 0.6, "isVolumeMuted": False}
     )
     await hass.services.async_call(
-        "media_player", "volume_down",
+        "media_player",
+        "volume_down",
         {"entity_id": "media_player.kitchen_screen_media_player"},
         blocking=True,
     )
@@ -463,16 +504,14 @@ async def test_service_error_raises_home_assistant_error(
     hass: HomeAssistant, setup_media_player
 ) -> None:
     """HubbleError from any service call surfaces as HomeAssistantError."""
-    from homeassistant.components.hubble.api import HubbleConnectionError
-    from homeassistant.exceptions import HomeAssistantError
-
     entry, mock_client = setup_media_player
-    mock_client.async_media_turn_on = AsyncMock(
+    mock_client.async_execute_command = AsyncMock(
         side_effect=HubbleConnectionError("timeout")
     )
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
-            "media_player", "turn_on",
+            "media_player",
+            "turn_on",
             {"entity_id": "media_player.kitchen_screen_media_player"},
             blocking=True,
         )
@@ -488,7 +527,8 @@ async def test_play_media_maps_music_content_type(
     entry, mock_client = setup_media_player
     mock_client.async_media_play = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "play_media",
+        "media_player",
+        "play_media",
         {
             "entity_id": "media_player.kitchen_screen_media_player",
             "media_content_id": "http://nas.local/track.mp3",
@@ -510,7 +550,8 @@ async def test_play_media_with_announce_true(
     entry, mock_client = setup_media_player
     mock_client.async_media_play = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "play_media",
+        "media_player",
+        "play_media",
         {
             "entity_id": "media_player.kitchen_screen_media_player",
             "media_content_id": "http://ha.local/tts.mp3",
@@ -530,7 +571,8 @@ async def test_play_media_extra_fields_forwarded(
     entry, mock_client = setup_media_player
     mock_client.async_media_play = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "play_media",
+        "media_player",
+        "play_media",
         {
             "entity_id": "media_player.kitchen_screen_media_player",
             "media_content_id": "http://nas.local/track.mp3",
@@ -560,7 +602,8 @@ async def test_play_media_unknown_content_type_sends_none(
     entry, mock_client = setup_media_player
     mock_client.async_media_play = AsyncMock(return_value={"success": True})
     await hass.services.async_call(
-        "media_player", "play_media",
+        "media_player",
+        "play_media",
         {
             "entity_id": "media_player.kitchen_screen_media_player",
             "media_content_id": "http://nas.local/file.mp3",
@@ -580,9 +623,12 @@ async def test_select_source_maps_label_to_id(
 ) -> None:
     """select_source maps the display label to the device ID before calling API."""
     entry, mock_client = setup_media_player
-    mock_client.async_media_set_source = AsyncMock(return_value={"success": True, "source": "hdmi"})
+    mock_client.async_media_set_source = AsyncMock(
+        return_value={"success": True, "source": "hdmi"}
+    )
     await hass.services.async_call(
-        "media_player", "select_source",
+        "media_player",
+        "select_source",
         {
             "entity_id": "media_player.kitchen_screen_media_player",
             "source": "HDMI Output",
@@ -596,16 +642,14 @@ async def test_select_source_unknown_label_passes_through(
     hass: HomeAssistant, setup_media_player
 ) -> None:
     """Unknown label is passed as-is; API returns 400 → HomeAssistantError."""
-    from homeassistant.components.hubble.api import HubbleConnectionError
-    from homeassistant.exceptions import HomeAssistantError
-
     entry, mock_client = setup_media_player
     mock_client.async_media_set_source = AsyncMock(
         side_effect=HubbleConnectionError("Source not available")
     )
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
-            "media_player", "select_source",
+            "media_player",
+            "select_source",
             {
                 "entity_id": "media_player.kitchen_screen_media_player",
                 "source": "Bluetooth Headphones",
@@ -630,12 +674,14 @@ async def test_display_select_current_option(
 async def test_display_select_option_calls_api(
     hass: HomeAssistant, setup_media_player
 ) -> None:
+    """select_option service calls async_media_set_display with the chosen mode."""
     entry, mock_client = setup_media_player
     mock_client.async_media_set_display = AsyncMock(
         return_value={"success": True, "displayMode": "fullscreen"}
     )
     await hass.services.async_call(
-        "select", "select_option",
+        "select",
+        "select_option",
         {
             "entity_id": "select.kitchen_screen_display_mode",
             "option": "fullscreen",
@@ -648,16 +694,15 @@ async def test_display_select_option_calls_api(
 async def test_display_select_error_raises_home_assistant_error(
     hass: HomeAssistant, setup_media_player
 ) -> None:
-    from homeassistant.components.hubble.api import HubbleConnectionError
-    from homeassistant.exceptions import HomeAssistantError
-
+    """HubbleError from display mode change surfaces as HomeAssistantError."""
     entry, mock_client = setup_media_player
     mock_client.async_media_set_display = AsyncMock(
         side_effect=HubbleConnectionError("bad mode")
     )
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
-            "select", "select_option",
+            "select",
+            "select_option",
             {
                 "entity_id": "select.kitchen_screen_display_mode",
                 "option": "fullscreen",
@@ -691,9 +736,6 @@ async def test_both_entities_share_dict_after_ws_recovery(
     hass: HomeAssistant,
 ) -> None:
     """After recovery from None, both entities share the same coordinator.media_state dict."""
-    from . import MOCK_DASHBOARD_STATE, MOCK_DISCOVERY, MOCK_NOTIFY_COUNT
-    from homeassistant.components.hubble.api import HubbleConnectionError
-
     entry = MockConfigEntry(domain=DOMAIN, data=MOCK_USER_INPUT, title="Kitchen Screen")
     entry.add_to_hass(hass)
 
@@ -713,6 +755,9 @@ async def test_both_entities_share_dict_after_ws_recovery(
         mock_client.async_get_connector_state = AsyncMock(return_value={})
         mock_client.async_media_get_state = AsyncMock(
             side_effect=HubbleConnectionError("timeout")
+        )
+        mock_client.async_execute_command = AsyncMock(
+            return_value=dict(MOCK_COMMAND_EXECUTE_RESULT)
         )
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

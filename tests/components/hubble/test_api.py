@@ -300,30 +300,35 @@ async def test_async_media_stop_posts_to_correct_endpoint(client) -> None:
     )
 
 
-async def test_async_media_turn_on_posts_to_correct_endpoint(client) -> None:
-    """Test async_media_turn_on POSTs to the correct endpoint."""
-    client._session.post = MagicMock(
-        return_value=_make_post_response({"success": True})
-    )
-    await client.async_media_turn_on()
-    client._session.post.assert_called_once_with(
-        "http://kitchen-screen:3000/api/media-player/turn-on",
+async def test_async_execute_command_gets_correct_endpoint(client) -> None:
+    """async_execute_command GETs the commands execute endpoint for a given slug."""
+    execute_result = {"ok": True, "stdout": "true", "stderr": "", "exitCode": 0}
+    mock_response = MagicMock()
+    mock_response.status = 200
+    mock_response.json = AsyncMock(return_value=execute_result)
+    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_response.__aexit__ = AsyncMock(return_value=False)
+    client._session.get = MagicMock(return_value=mock_response)
+
+    result = await client.async_execute_command("screen-status")
+
+    assert result == execute_result
+    client._session.get.assert_called_once_with(
+        "http://kitchen-screen:3000/api/commands/screen-status/execute",
         headers={"x-api-key": "test-api-key"},
-        json={},
     )
 
 
-async def test_async_media_turn_off_posts_to_correct_endpoint(client) -> None:
-    """Test async_media_turn_off POSTs to the correct endpoint."""
-    client._session.post = MagicMock(
-        return_value=_make_post_response({"success": True})
-    )
-    await client.async_media_turn_off()
-    client._session.post.assert_called_once_with(
-        "http://kitchen-screen:3000/api/media-player/turn-off",
-        headers={"x-api-key": "test-api-key"},
-        json={},
-    )
+async def test_async_execute_command_raises_auth_error_on_401(client) -> None:
+    """async_execute_command raises HubbleAuthError on HTTP 401."""
+    mock_response = MagicMock()
+    mock_response.status = 401
+    mock_response.__aenter__ = AsyncMock(return_value=mock_response)
+    mock_response.__aexit__ = AsyncMock(return_value=False)
+    client._session.get = MagicMock(return_value=mock_response)
+
+    with pytest.raises(HubbleAuthError):
+        await client.async_execute_command("screen-on")
 
 
 # ── async_media_play ─────────────────────────────────────────────────────────

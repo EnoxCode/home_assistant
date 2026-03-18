@@ -287,13 +287,19 @@ class HubbleApiClient:
         """POST /api/media-player/stop."""
         return await self._async_post("/api/media-player/stop")
 
-    async def async_media_turn_on(self) -> dict[str, Any]:
-        """POST /api/media-player/turn-on."""
-        return await self._async_post("/api/media-player/turn-on")
-
-    async def async_media_turn_off(self) -> dict[str, Any]:
-        """POST /api/media-player/turn-off."""
-        return await self._async_post("/api/media-player/turn-off")
+    async def async_execute_command(self, slug: str) -> dict[str, Any]:
+        """GET /api/commands/{slug}/execute — run a built-in or custom command."""
+        url = f"{self._base_url}/api/commands/{slug}/execute"
+        try:
+            async with self._session.get(url, headers=self._headers) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
 
     async def async_media_set_volume_level(self, level: float) -> dict[str, Any]:
         """POST /api/media-player/volume with {"level": level}."""

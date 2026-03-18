@@ -8,6 +8,7 @@ from homeassistant.components.hubble.const import DOMAIN
 from homeassistant.core import HomeAssistant
 
 from . import (
+    MOCK_COMMAND_EXECUTE_RESULT,
     MOCK_DASHBOARD_STATE,
     MOCK_DISCOVERY,
     MOCK_MEDIA_STATE,
@@ -71,6 +72,9 @@ async def setup_integration(hass: HomeAssistant):
         mock_client.async_get_connector_state = AsyncMock(return_value={})
         mock_client.async_media_get_state = AsyncMock(
             return_value=dict(MOCK_MEDIA_STATE)
+        )
+        mock_client.async_execute_command = AsyncMock(
+            return_value=dict(MOCK_COMMAND_EXECUTE_RESULT)
         )
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

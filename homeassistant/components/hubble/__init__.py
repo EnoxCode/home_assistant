@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntryState
@@ -23,9 +25,17 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError, HubbleError
-from .coordinator import HubbleConfigEntry, HubbleCoordinator
+from .coordinator import HubbleConfigEntry, HubbleCoordinator, HubbleScreenCoordinator
 
-PLATFORMS = [Platform.BUTTON, Platform.MEDIA_PLAYER, Platform.SELECT, Platform.SENSOR]
+_LOGGER = logging.getLogger(__name__)
+
+PLATFORMS = [
+    Platform.BUTTON,
+    Platform.MEDIA_PLAYER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema("hubble")
 
@@ -208,6 +218,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: HubbleConfigEntry) -> bo
     coordinator.discovery = discovery
 
     await coordinator.async_config_entry_first_refresh()
+
+    # Create screen coordinator and attach it before platform setup so the
+    # switch platform can reference it via coordinator.screen_coordinator.
+    screen_coordinator = HubbleScreenCoordinator(hass, entry, client)
+    coordinator.screen_coordinator = screen_coordinator
+
+    # Fetch initial screen state. Failure is non-fatal — the switch starts
+    # unavailable and retries on the next poll cycle.
+    try:
+        await screen_coordinator.async_config_entry_first_refresh()
+    except ConfigEntryNotReady:
+        _LOGGER.warning("Initial screen status check failed; switch starts unavailable")
+
     entry.runtime_data = coordinator
 
     # Forward platform setups before starting WebSocket so module platforms

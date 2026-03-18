@@ -16,7 +16,13 @@ _LOGGER = logging.getLogger(__name__)
 
 # Core events subscribed to by default on every connection.
 _DEFAULT_EVENTS: frozenset[str] = frozenset(
-    {"page:changed", "notification", "notification:dismissed", "media:state"}
+    {
+        "page:changed",
+        "notification",
+        "notification:dismissed",
+        "media:state",
+        "screen:changed",
+    }
 )
 
 

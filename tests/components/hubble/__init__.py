@@ -28,12 +28,28 @@ MOCK_STATE = {
     "notificationCount": MOCK_NOTIFY_COUNT,
 }
 
+# Mock response from GET /api/commands/{slug}/execute
+MOCK_COMMAND_EXECUTE_RESULT = {
+    "ok": True,
+    "stdout": "true",
+    "stderr": "",
+    "exitCode": 0,
+}
+
 # Discovery payload from GET /api/ws/events
 MOCK_DISCOVERY = {
     "core": {
         "events": [
-            {"event": "page:changed", "description": "Active page changed.", "payload": {}},
-            {"event": "notification", "description": "Notification pushed.", "payload": {}},
+            {
+                "event": "page:changed",
+                "description": "Active page changed.",
+                "payload": {},
+            },
+            {
+                "event": "notification",
+                "description": "Notification pushed.",
+                "payload": {},
+            },
             {
                 "event": "notification:dismissed",
                 "description": "Notification dismissed.",
@@ -41,6 +57,29 @@ MOCK_DISCOVERY = {
             },
         ]
     },
+    "commands": [
+        {
+            "slug": "screen-off",
+            "label": "Screen Off",
+            "description": "Turns off the display.",
+            "builtin": True,
+            "executeUrl": "/api/commands/screen-off/execute",
+        },
+        {
+            "slug": "screen-on",
+            "label": "Screen On",
+            "description": "Turns on the display.",
+            "builtin": True,
+            "executeUrl": "/api/commands/screen-on/execute",
+        },
+        {
+            "slug": "screen-status",
+            "label": "Screen Status",
+            "description": "Prints true/false to stdout.",
+            "builtin": True,
+            "executeUrl": "/api/commands/screen-status/execute",
+        },
+    ],
     "modules": [
         {
             "module": "hubble-clock",
@@ -49,7 +88,11 @@ MOCK_DISCOVERY = {
             "events": [],
             "endpoints": [],
             "instances": [
-                {"widgetId": 1, "visualization": "digital", "config": {"slug": "clock-1"}}
+                {
+                    "widgetId": 1,
+                    "visualization": "digital",
+                    "config": {"slug": "clock-1"},
+                }
             ],
         },
         {
@@ -59,7 +102,11 @@ MOCK_DISCOVERY = {
             "events": [],
             "endpoints": [],
             "instances": [
-                {"widgetId": 2, "visualization": "current", "config": {"slug": "weather-1"}}
+                {
+                    "widgetId": 2,
+                    "visualization": "current",
+                    "config": {"slug": "weather-1"},
+                }
             ],
         },
     ],

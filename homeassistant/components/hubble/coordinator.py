@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 import contextlib
+from datetime import timedelta
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -19,12 +20,55 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import HubbleApiClient, HubbleAuthError, HubbleConnectionError
-from .const import DOMAIN, SCAN_INTERVAL
+from .const import (
+    CONF_SCREEN_POLL_INTERVAL,
+    CONF_SCREEN_STATUS_COMMAND,
+    DEFAULT_SCREEN_POLL_INTERVAL,
+    DEFAULT_SCREEN_STATUS_COMMAND,
+    DOMAIN,
+    SCAN_INTERVAL,
+)
 from .websocket import HubbleWebSocketClient
 
 _LOGGER = logging.getLogger(__name__)
 
 type HubbleConfigEntry = ConfigEntry[HubbleCoordinator]
+
+
+class HubbleScreenCoordinator(DataUpdateCoordinator[bool | None]):
+    """Poll screen-status command and cache the result as a bool."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: HubbleConfigEntry,
+        client: HubbleApiClient,
+    ) -> None:
+        """Initialise the screen coordinator."""
+        poll_interval = entry.data.get(
+            CONF_SCREEN_POLL_INTERVAL, DEFAULT_SCREEN_POLL_INTERVAL
+        )
+        super().__init__(
+            hass,
+            _LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN}_screen",
+            update_interval=timedelta(seconds=poll_interval),
+        )
+        self.client = client
+        self._status_slug: str = entry.data.get(
+            CONF_SCREEN_STATUS_COMMAND, DEFAULT_SCREEN_STATUS_COMMAND
+        )
+
+    async def _async_update_data(self) -> bool | None:
+        """Fetch screen state by executing the screen-status command."""
+        try:
+            result = await self.client.async_execute_command(self._status_slug)
+        except HubbleAuthError as err:
+            raise ConfigEntryAuthFailed from err
+        except HubbleConnectionError as err:
+            raise UpdateFailed(str(err)) from err
+        return result.get("stdout", "").strip().lower() == "true"
 
 
 class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -65,6 +109,8 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # References to the media player and display mode entities for WS updates.
         self.media_player_entity: Entity | None = None
         self.display_mode_entity: Entity | None = None
+        # Screen coordinator — set by async_setup_entry after creation.
+        self.screen_coordinator: HubbleScreenCoordinator | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch latest state from Hubble REST endpoints (fallback resync)."""
@@ -140,6 +186,14 @@ class HubbleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         handler = self._core_handlers.get(event)
         if handler:
             handler(data)
+            return
+
+        # screen:changed — schedule an immediate screen status poll.
+        if event == "screen:changed":
+            if self.screen_coordinator is not None:
+                self.hass.async_create_task(
+                    self.screen_coordinator.async_request_refresh()
+                )
             return
 
         # Core events — patch coordinator data in place.

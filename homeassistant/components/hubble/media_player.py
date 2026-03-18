@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     ATTR_MEDIA_EXTRA,
     BrowseMedia,
@@ -12,9 +13,6 @@ from homeassistant.components.media_player import (
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
-)
-from homeassistant.components import media_source
-from homeassistant.components.media_player.browse_media import (
     async_process_play_media_url,
 )
 from homeassistant.const import CONF_NAME
@@ -25,7 +23,13 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 import homeassistant.util.dt as dt_util
 
 from .api import HubbleError
-from .const import DOMAIN
+from .const import (
+    CONF_SCREEN_OFF_COMMAND,
+    CONF_SCREEN_ON_COMMAND,
+    DEFAULT_SCREEN_OFF_COMMAND,
+    DEFAULT_SCREEN_ON_COMMAND,
+    DOMAIN,
+)
 from .coordinator import HubbleConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
@@ -229,18 +233,28 @@ class HubbleMediaPlayer(MediaPlayerEntity):
         }
 
     async def async_turn_on(self) -> None:
-        """Turn on the media player."""
+        """Turn on the screen via the commands API."""
+        slug = self.entry.data.get(CONF_SCREEN_ON_COMMAND, DEFAULT_SCREEN_ON_COMMAND)
         try:
-            await self.coordinator.client.async_media_turn_on()
+            await self.coordinator.client.async_execute_command(slug)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+        if self.coordinator.screen_coordinator is not None:
+            await self.coordinator.screen_coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        """Turn off the media player."""
+        """Turn off the screen and stop playback."""
+        slug = self.entry.data.get(CONF_SCREEN_OFF_COMMAND, DEFAULT_SCREEN_OFF_COMMAND)
         try:
-            await self.coordinator.client.async_media_turn_off()
+            await self.coordinator.client.async_execute_command(slug)
         except HubbleError as err:
             raise HomeAssistantError(str(err)) from err
+        try:
+            await self.coordinator.client.async_media_stop()
+        except HubbleError as err:
+            raise HomeAssistantError(str(err)) from err
+        if self.coordinator.screen_coordinator is not None:
+            await self.coordinator.screen_coordinator.async_request_refresh()
 
     async def async_media_play(self) -> None:
         """Send play command (resume)."""
@@ -332,7 +346,9 @@ class HubbleMediaPlayer(MediaPlayerEntity):
             raise HomeAssistantError(str(err)) from err
 
     async def async_browse_media(
-        self, media_content_type: str | None = None, media_content_id: str | None = None
+        self,
+        media_content_type: MediaType | str | None = None,
+        media_content_id: str | None = None,
     ) -> BrowseMedia:
         """Expose HA media sources for browsing."""
         return await media_source.async_browse_media(self.hass, media_content_id)

@@ -59,13 +59,13 @@
                 "name": "Display Mode",
                 "state": {
                     "fullscreen": "Fullscreen",
-                    "half-top": "Half top",
                     "half-bottom": "Half bottom",
-                    "quarter-tl": "Quarter top-left",
-                    "quarter-tr": "Quarter top-right",
+                    "half-top": "Half top",
+                    "none": "None",
                     "quarter-bl": "Quarter bottom-left",
                     "quarter-br": "Quarter bottom-right",
-                    "none": "None"
+                    "quarter-tl": "Quarter top-left",
+                    "quarter-tr": "Quarter top-right"
                 }
             }
         },
@@ -78,6 +78,11 @@
             },
             "notification_count": {
                 "name": "Notification count"
+            }
+        },
+        "switch": {
+            "hubble_screen": {
+                "name": "Screen"
             }
         }
     },
