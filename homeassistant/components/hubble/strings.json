@@ -39,6 +39,7 @@
     },
     "select": {
       "active_page": { "name": "Active page" },
+      "active_widget": { "name": "Active widget" },
       "display_mode": {
         "name": "Display Mode",
         "state": {
