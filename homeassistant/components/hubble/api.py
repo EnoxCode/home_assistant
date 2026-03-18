@@ -95,6 +95,8 @@ class HubbleApiClient:
         """POST /api/dashboard/widget/select with {"widgetId": widget_id}.
 
         Raises HubbleNotFoundError if the widget is not selectable on the active page (HTTP 404).
+
+        Cannot use _async_post: needs to intercept 404 before raise_for_status.
         """
         url = f"{self._base_url}/api/dashboard/widget/select"
         try:
