@@ -9,6 +9,8 @@ from homeassistant.components.hubble.api import (
     HubbleApiClient,
     HubbleAuthError,
     HubbleConnectionError,
+    HubbleError,
+    HubbleNotFoundError,
 )
 
 from . import MOCK_DISCOVERY, MOCK_MEDIA_STATE
@@ -27,7 +29,7 @@ def client():
 
 
 async def test_async_discover_returns_payload(client) -> None:
-    """async_discover returns the parsed JSON from GET /api/ws/events."""
+    """async_discover returns the parsed JSON from GET /api/discovery."""
     mock_response = MagicMock()
     mock_response.status = 200
     mock_response.json = AsyncMock(return_value=MOCK_DISCOVERY)
@@ -39,7 +41,7 @@ async def test_async_discover_returns_payload(client) -> None:
 
     assert result == MOCK_DISCOVERY
     client._session.get.assert_called_once_with(
-        "http://kitchen-screen:3000/api/ws/events",
+        "http://kitchen-screen:3000/api/discovery",
         headers={"x-api-key": "test-api-key"},
     )
 
@@ -469,3 +471,87 @@ async def test_async_media_set_source(client) -> None:
         headers={"x-api-key": "test-api-key"},
         json={"source": "hdmi"},
     )
+
+
+# ── HubbleNotFoundError ───────────────────────────────────────────────────────
+
+
+async def test_hubble_not_found_error_is_hubble_error() -> None:
+    """HubbleNotFoundError is a subclass of HubbleError."""
+    assert issubclass(HubbleNotFoundError, HubbleError)
+
+
+# ── async_discover (new endpoint) ────────────────────────────────────────────
+
+
+async def test_async_discover_calls_api_discovery_endpoint() -> None:
+    """async_discover() calls /api/discovery (not /api/ws/events)."""
+    mock_resp = MagicMock()
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=False)
+    mock_resp.status = 200
+    mock_resp.json = AsyncMock(return_value={"selectableWidgets": []})
+    mock_session = MagicMock()
+    mock_session.get = MagicMock(return_value=mock_resp)
+
+    client = HubbleApiClient("localhost", 3000, "key", mock_session)
+    result = await client.async_discover()
+
+    called_url = mock_session.get.call_args[0][0]
+    assert called_url == "http://localhost:3000/api/discovery"
+    assert result == {"selectableWidgets": []}
+
+
+# ── async_select_widget ───────────────────────────────────────────────────────
+
+
+async def test_async_select_widget_posts_widget_id() -> None:
+    """async_select_widget posts {"widgetId": n} to the correct URL."""
+    mock_resp = MagicMock()
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=False)
+    mock_resp.status = 200
+    mock_resp.json = AsyncMock(return_value={"widgetId": 5})
+    mock_resp.raise_for_status = MagicMock()
+    mock_session = MagicMock()
+    mock_session.post = MagicMock(return_value=mock_resp)
+
+    client = HubbleApiClient("localhost", 3000, "key", mock_session)
+    result = await client.async_select_widget(5)
+
+    called_url = mock_session.post.call_args[0][0]
+    assert called_url == "http://localhost:3000/api/dashboard/widget/select"
+    assert mock_session.post.call_args[1]["json"] == {"widgetId": 5}
+    assert result == {"widgetId": 5}
+
+
+async def test_async_select_widget_none_posts_null() -> None:
+    """async_select_widget(None) posts {"widgetId": null}."""
+    mock_resp = MagicMock()
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=False)
+    mock_resp.status = 200
+    mock_resp.json = AsyncMock(return_value={"widgetId": None})
+    mock_resp.raise_for_status = MagicMock()
+    mock_session = MagicMock()
+    mock_session.post = MagicMock(return_value=mock_resp)
+
+    client = HubbleApiClient("localhost", 3000, "key", mock_session)
+    result = await client.async_select_widget(None)
+
+    assert mock_session.post.call_args[1]["json"] == {"widgetId": None}
+    assert result == {"widgetId": None}
+
+
+async def test_async_select_widget_raises_not_found_on_404() -> None:
+    """async_select_widget raises HubbleNotFoundError on HTTP 404."""
+    mock_resp = MagicMock()
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=False)
+    mock_resp.status = 404
+    mock_session = MagicMock()
+    mock_session.post = MagicMock(return_value=mock_resp)
+
+    client = HubbleApiClient("localhost", 3000, "key", mock_session)
+    with pytest.raises(HubbleNotFoundError):
+        await client.async_select_widget(99)

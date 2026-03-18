@@ -24,6 +24,10 @@ class HubbleConnectionError(HubbleError):
     """Raised when the Hubble device cannot be reached."""
 
 
+class HubbleNotFoundError(HubbleError):
+    """Raised when the API returns HTTP 404 (resource not found)."""
+
+
 class HubbleApiClient:
     """Thin HTTP client for the Hubble REST API."""
 
@@ -74,12 +78,33 @@ class HubbleApiClient:
             raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
 
     async def async_discover(self) -> dict[str, Any]:
-        """Return the discovery payload from GET /api/ws/events."""
-        url = f"{self._base_url}/api/ws/events"
+        """Return the discovery payload from GET /api/discovery."""
+        url = f"{self._base_url}/api/discovery"
         try:
             async with self._session.get(url, headers=self._headers) as response:
                 if response.status == 401:
                     raise HubbleAuthError("Invalid API key")
+                response.raise_for_status()
+                return await response.json()
+        except HubbleError:
+            raise
+        except aiohttp.ClientError as err:
+            raise HubbleConnectionError(f"Cannot connect to Hubble: {err}") from err
+
+    async def async_select_widget(self, widget_id: int | None) -> dict[str, Any]:
+        """POST /api/dashboard/widget/select with {"widgetId": widget_id}.
+
+        Raises HubbleNotFoundError if the widget is not selectable on the active page (HTTP 404).
+        """
+        url = f"{self._base_url}/api/dashboard/widget/select"
+        try:
+            async with self._session.post(
+                url, headers=self._headers, json={"widgetId": widget_id}
+            ) as response:
+                if response.status == 401:
+                    raise HubbleAuthError("Invalid API key")
+                if response.status == 404:
+                    raise HubbleNotFoundError("Widget not selectable on active page")
                 response.raise_for_status()
                 return await response.json()
         except HubbleError:
