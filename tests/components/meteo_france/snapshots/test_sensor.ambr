@@ -1,8 +1,9 @@
 # serializer version: 1
 # name: test_sensor[sensor.32_weather_alert-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -20,6 +21,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': '32 Weather alert',
     'options': dict({
     }),
     'original_device_class': None,
@@ -27,6 +29,7 @@
     'original_name': '32 Weather alert',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '32 Weather alert',
@@ -56,8 +59,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_cloud_cover-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -75,6 +79,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Cloud cover',
     'options': dict({
     }),
     'original_device_class': None,
@@ -82,6 +87,7 @@
     'original_name': 'La Clusaz Cloud cover',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_cloud',
@@ -106,8 +112,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_daily_original_condition-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -125,6 +132,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Daily original condition',
     'options': dict({
     }),
     'original_device_class': None,
@@ -132,6 +140,7 @@
     'original_name': 'La Clusaz Daily original condition',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_daily_original_condition',
@@ -154,8 +163,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_daily_precipitation-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -173,13 +183,18 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Daily precipitation',
     'options': dict({
+      'sensor': dict({
+        'suggested_display_precision': 0,
+      }),
     }),
     'original_device_class': <SensorDeviceClass.PRECIPITATION: 'precipitation'>,
     'original_icon': None,
     'original_name': 'La Clusaz Daily precipitation',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_precipitation',
@@ -204,8 +219,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_freeze_chance-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -223,6 +239,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Freeze chance',
     'options': dict({
     }),
     'original_device_class': None,
@@ -230,6 +247,7 @@
     'original_name': 'La Clusaz Freeze chance',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_freeze_chance',
@@ -254,8 +272,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_humidity-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': dict({
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -275,6 +294,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Humidity',
     'options': dict({
     }),
     'original_device_class': <SensorDeviceClass.HUMIDITY: 'humidity'>,
@@ -282,6 +302,7 @@
     'original_name': 'La Clusaz Humidity',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_humidity',
@@ -307,8 +328,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_original_condition-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -326,6 +348,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Original condition',
     'options': dict({
     }),
     'original_device_class': None,
@@ -333,6 +356,7 @@
     'original_name': 'La Clusaz Original condition',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_original_condition',
@@ -355,8 +379,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_pressure-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': dict({
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -376,13 +401,18 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Pressure',
     'options': dict({
+      'sensor': dict({
+        'suggested_display_precision': 2,
+      }),
     }),
-    'original_device_class': <SensorDeviceClass.PRESSURE: 'pressure'>,
+    'original_device_class': <SensorDeviceClass.ATMOSPHERIC_PRESSURE: 'atmospheric_pressure'>,
     'original_icon': None,
     'original_name': 'La Clusaz Pressure',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_pressure',
@@ -393,7 +423,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'attribution': 'Data provided by Météo-France',
-      'device_class': 'pressure',
+      'device_class': 'atmospheric_pressure',
       'friendly_name': 'La Clusaz Pressure',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
       'unit_of_measurement': <UnitOfPressure.HPA: 'hPa'>,
@@ -408,8 +438,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_rain_chance-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -427,6 +458,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Rain chance',
     'options': dict({
     }),
     'original_device_class': None,
@@ -434,6 +466,7 @@
     'original_name': 'La Clusaz Rain chance',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_rain_chance',
@@ -458,8 +491,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_snow_chance-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -477,6 +511,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Snow chance',
     'options': dict({
     }),
     'original_device_class': None,
@@ -484,6 +519,7 @@
     'original_name': 'La Clusaz Snow chance',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_snow_chance',
@@ -508,8 +544,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_temperature-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': dict({
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -529,13 +566,18 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Temperature',
     'options': dict({
+      'sensor': dict({
+        'suggested_display_precision': 1,
+      }),
     }),
     'original_device_class': <SensorDeviceClass.TEMPERATURE: 'temperature'>,
     'original_icon': None,
     'original_name': 'La Clusaz Temperature',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_temperature',
@@ -561,8 +603,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_uv-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -580,6 +623,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz UV',
     'options': dict({
     }),
     'original_device_class': None,
@@ -587,6 +631,7 @@
     'original_name': 'La Clusaz UV',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_uv',
@@ -611,8 +656,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_wind_gust-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': dict({
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -632,13 +678,18 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Wind gust',
     'options': dict({
+      'sensor': dict({
+        'suggested_display_precision': 2,
+      }),
     }),
     'original_device_class': <SensorDeviceClass.WIND_SPEED: 'wind_speed'>,
     'original_icon': 'mdi:weather-windy-variant',
     'original_name': 'La Clusaz Wind gust',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_wind_gust',
@@ -665,8 +716,9 @@
 # ---
 # name: test_sensor[sensor.la_clusaz_wind_speed-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': dict({
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
@@ -686,13 +738,18 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'La Clusaz Wind speed',
     'options': dict({
+      'sensor': dict({
+        'suggested_display_precision': 2,
+      }),
     }),
     'original_device_class': <SensorDeviceClass.WIND_SPEED: 'wind_speed'>,
     'original_icon': None,
     'original_name': 'La Clusaz Wind speed',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '45.90417,6.42306_wind_speed',
@@ -718,8 +775,9 @@
 # ---
 # name: test_sensor[sensor.meudon_next_rain-entry]
   EntityRegistryEntrySnapshot({
-    'aliases': set({
-    }),
+    'aliases': list([
+      None,
+    ]),
     'area_id': None,
     'capabilities': None,
     'config_entry_id': <ANY>,
@@ -737,6 +795,7 @@
     'labels': set({
     }),
     'name': None,
+    'object_id_base': 'Meudon Next rain',
     'options': dict({
     }),
     'original_device_class': <SensorDeviceClass.TIMESTAMP: 'timestamp'>,
@@ -744,6 +803,7 @@
     'original_name': 'Meudon Next rain',
     'platform': 'meteo_france',
     'previous_unique_id': None,
+    'suggested_object_id': None,
     'supported_features': 0,
     'translation_key': None,
     'unique_id': '48.807166,2.239895_next_rain',

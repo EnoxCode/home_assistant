@@ -25,18 +25,15 @@ from .const import (
     WIFI_STANDARD,
     MeshRoles,
 )
-from .coordinator import (
-    FRITZ_DATA_KEY,
-    AvmWrapper,
-    FritzConfigEntry,
-    FritzData,
-    FritzDevice,
-    SwitchInfo,
-    device_filter_out_from_trackers,
-)
+from .coordinator import FRITZ_DATA_KEY, AvmWrapper, FritzConfigEntry, FritzData
 from .entity import FritzBoxBaseEntity, FritzDeviceBase
+from .helpers import device_filter_out_from_trackers
+from .models import FritzDevice, SwitchInfo
 
 _LOGGER = logging.getLogger(__name__)
+
+# Set a sane value to avoid too many updates
+PARALLEL_UPDATES = 5
 
 
 async def _async_deflection_entities_list(
@@ -136,26 +133,20 @@ async def _async_wifi_entities_list(
         ]
     )
     _LOGGER.debug("WiFi networks count: %s", wifi_count)
-    networks: dict = {}
+    networks: dict[int, dict[str, Any]] = {}
     for i in range(1, wifi_count + 1):
         network_info = await avm_wrapper.async_get_wlan_configuration(i)
         # Devices with 4 WLAN services, use the 2nd for internal communications
         if not (wifi_count == 4 and i == 2):
-            networks[i] = {
-                "ssid": network_info["NewSSID"],
-                "bssid": network_info["NewBSSID"],
-                "standard": network_info["NewStandard"],
-                "enabled": network_info["NewEnable"],
-                "status": network_info["NewStatus"],
-            }
+            networks[i] = network_info
     for i, network in networks.copy().items():
-        networks[i]["switch_name"] = network["ssid"]
+        networks[i]["switch_name"] = network["NewSSID"]
         if (
             len(
                 [
                     j
                     for j, n in networks.items()
-                    if slugify(n["ssid"]) == slugify(network["ssid"])
+                    if slugify(n["NewSSID"]) == slugify(network["NewSSID"])
                 ]
             )
             > 1
@@ -279,7 +270,7 @@ class FritzBoxBaseCoordinatorSwitch(CoordinatorEntity[AvmWrapper], SwitchEntity)
             configuration_url=f"http://{self.coordinator.host}",
             connections={(CONNECTION_NETWORK_MAC, self.coordinator.mac)},
             identifiers={(DOMAIN, self.coordinator.unique_id)},
-            manufacturer="AVM",
+            manufacturer="FRITZ!",
             model=self.coordinator.model,
             name=self._device_name,
             sw_version=self.coordinator.current_firmware,
@@ -385,7 +376,7 @@ class FritzBoxPortSwitch(FritzBoxBaseSwitch):
         self,
         avm_wrapper: AvmWrapper,
         device_friendly_name: str,
-        port_mapping: dict[str, Any] | None,
+        port_mapping: dict[str, Any],
         port_name: str,
         idx: int,
         connection_type: str,
@@ -398,9 +389,6 @@ class FritzBoxPortSwitch(FritzBoxBaseSwitch):
         self.port_mapping = port_mapping  # dict in the format as it comes from fritzconnection. eg: {'NewRemoteHost': '0.0.0.0', 'NewExternalPort': 22, 'NewProtocol': 'TCP', 'NewInternalPort': 22, 'NewInternalClient': '192.168.178.31', 'NewEnabled': True, 'NewPortMappingDescription': 'Beast SSH ', 'NewLeaseDuration': 0}
         self._idx = idx  # needed for update routine
         self._attr_entity_category = EntityCategory.CONFIG
-
-        if port_mapping is None:
-            return
 
         switch_info = SwitchInfo(
             description=f"Port forward {port_name}",
@@ -440,16 +428,11 @@ class FritzBoxPortSwitch(FritzBoxBaseSwitch):
         for key, attr in attributes_dict.items():
             self._attributes[attr] = self.port_mapping[key]
 
-    async def _async_switch_on_off_executor(self, turn_on: bool) -> bool:
-        if self.port_mapping is None:
-            return False
-
+    async def _async_switch_on_off_executor(self, turn_on: bool) -> None:
         self.port_mapping["NewEnabled"] = "1" if turn_on else "0"
-
-        resp = await self._avm_wrapper.async_add_port_mapping(
+        await self._avm_wrapper.async_add_port_mapping(
             self.connection_type, self.port_mapping
         )
-        return bool(resp is not None)
 
 
 class FritzBoxDeflectionSwitch(FritzBoxBaseCoordinatorSwitch):
@@ -497,30 +480,22 @@ class FritzBoxDeflectionSwitch(FritzBoxBaseCoordinatorSwitch):
     async def _async_handle_turn_on_off(self, turn_on: bool) -> None:
         """Handle deflection switch."""
         await self.coordinator.async_set_deflection_enable(self.deflection_id, turn_on)
+        deflection = self.coordinator.data["call_deflections"][self.deflection_id]
+        deflection["Enable"] = "1" if turn_on else "0"
+        self.async_write_ha_state()
 
 
 class FritzBoxProfileSwitch(FritzDeviceBase, SwitchEntity):
     """Defines a FRITZ!Box Tools DeviceProfile switch."""
 
-    _attr_icon = "mdi:router-wireless-settings"
+    _attr_translation_key = "internet_access"
 
     def __init__(self, avm_wrapper: AvmWrapper, device: FritzDevice) -> None:
         """Init Fritz profile."""
         super().__init__(avm_wrapper, device)
         self._attr_is_on: bool = False
-        self._name = f"{device.hostname} Internet Access"
         self._attr_unique_id = f"{self._mac}_internet_access"
         self._attr_entity_category = EntityCategory.CONFIG
-        self._attr_device_info = DeviceInfo(
-            connections={(CONNECTION_NETWORK_MAC, self._mac)},
-            default_manufacturer="AVM",
-            default_model="FRITZ!Box Tracked device",
-            default_name=device.hostname,
-            via_device=(
-                DOMAIN,
-                avm_wrapper.unique_id,
-            ),
-        )
 
     @property
     def is_on(self) -> bool | None:
@@ -542,13 +517,11 @@ class FritzBoxProfileSwitch(FritzDeviceBase, SwitchEntity):
         """Turn off switch."""
         await self._async_handle_turn_on_off(turn_on=False)
 
-    async def _async_handle_turn_on_off(self, turn_on: bool) -> bool:
+    async def _async_handle_turn_on_off(self, turn_on: bool) -> None:
         """Handle switch state change request."""
-        if not self.ip_address:
-            return False
         await self._avm_wrapper.async_set_allow_wan_access(self.ip_address, turn_on)
+        self._avm_wrapper.devices[self._mac].wan_access = turn_on
         self.async_write_ha_state()
-        return True
 
 
 class FritzBoxWifiSwitch(FritzBoxBaseSwitch):
@@ -559,10 +532,11 @@ class FritzBoxWifiSwitch(FritzBoxBaseSwitch):
         avm_wrapper: AvmWrapper,
         device_friendly_name: str,
         network_num: int,
-        network_data: dict,
+        network_data: dict[str, Any],
     ) -> None:
         """Init Fritz Wifi switch."""
         self._avm_wrapper = avm_wrapper
+        self._wifi_info = network_data
 
         self._attributes = {}
         self._attr_entity_category = EntityCategory.CONFIG
@@ -578,7 +552,7 @@ class FritzBoxWifiSwitch(FritzBoxBaseSwitch):
             type=SWITCH_TYPE_WIFINETWORK,
             callback_update=self._async_fetch_update,
             callback_switch=self._async_switch_on_off_executor,
-            init_state=network_data["enabled"],
+            init_state=network_data["NewEnable"],
         )
         super().__init__(self._avm_wrapper, device_friendly_name, switch_info)
 
@@ -600,12 +574,14 @@ class FritzBoxWifiSwitch(FritzBoxBaseSwitch):
         self._is_available = True
 
         std = wifi_info["NewStandard"]
-        self._attributes["standard"] = std if std else None
+        self._attributes["standard"] = std or None
         self._attributes["bssid"] = wifi_info["NewBSSID"]
         self._attributes["mac_address_control"] = wifi_info[
             "NewMACAddressControlEnabled"
         ]
+        self._wifi_info = wifi_info
 
     async def _async_switch_on_off_executor(self, turn_on: bool) -> None:
         """Handle wifi switch."""
+        self._wifi_info["NewEnable"] = turn_on
         await self._avm_wrapper.async_set_wlan_configuration(self._network_num, turn_on)

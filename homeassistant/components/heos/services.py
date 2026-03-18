@@ -9,7 +9,7 @@ import voluptuous as vol
 
 from homeassistant.components.media_player import ATTR_MEDIA_VOLUME_LEVEL
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import (
     config_validation as cv,
@@ -19,6 +19,7 @@ from homeassistant.helpers import (
 from homeassistant.helpers.typing import VolDictType, VolSchemaType
 
 from .const import (
+    ATTR_DESTINATION_POSITION,
     ATTR_PASSWORD,
     ATTR_QUEUE_IDS,
     ATTR_USERNAME,
@@ -27,6 +28,7 @@ from .const import (
     SERVICE_GROUP_VOLUME_DOWN,
     SERVICE_GROUP_VOLUME_SET,
     SERVICE_GROUP_VOLUME_UP,
+    SERVICE_MOVE_QUEUE_ITEM,
     SERVICE_REMOVE_FROM_QUEUE,
     SERVICE_SIGN_IN,
     SERVICE_SIGN_OUT,
@@ -42,7 +44,8 @@ HEOS_SIGN_IN_SCHEMA = vol.Schema(
 HEOS_SIGN_OUT_SCHEMA = vol.Schema({})
 
 
-def register(hass: HomeAssistant) -> None:
+@callback
+def async_setup_services(hass: HomeAssistant) -> None:
     """Register HEOS services."""
     hass.services.async_register(
         DOMAIN,
@@ -87,6 +90,16 @@ REMOVE_FROM_QUEUE_SCHEMA: Final[VolDictType] = {
 GROUP_VOLUME_SET_SCHEMA: Final[VolDictType] = {
     vol.Required(ATTR_MEDIA_VOLUME_LEVEL): cv.small_float
 }
+MOVE_QEUEUE_ITEM_SCHEMA: Final[VolDictType] = {
+    vol.Required(ATTR_QUEUE_IDS): vol.All(
+        cv.ensure_list,
+        [vol.All(vol.Coerce(int), vol.Range(min=1, max=1000))],
+        vol.Unique(),
+    ),
+    vol.Required(ATTR_DESTINATION_POSITION): vol.All(
+        vol.Coerce(int), vol.Range(min=1, max=1000)
+    ),
+}
 
 MEDIA_PLAYER_ENTITY_SERVICES: Final = (
     # Player queue services
@@ -95,6 +108,9 @@ MEDIA_PLAYER_ENTITY_SERVICES: Final = (
     ),
     EntityServiceDescription(
         SERVICE_REMOVE_FROM_QUEUE, "async_remove_from_queue", REMOVE_FROM_QUEUE_SCHEMA
+    ),
+    EntityServiceDescription(
+        SERVICE_MOVE_QUEUE_ITEM, "async_move_queue_item", MOVE_QEUEUE_ITEM_SCHEMA
     ),
     # Group volume services
     EntityServiceDescription(

@@ -30,7 +30,7 @@ from . import TeslemetryConfigEntry
 from .const import DOMAIN, TeslemetryClimateSide
 from .entity import (
     TeslemetryRootEntity,
-    TeslemetryVehicleEntity,
+    TeslemetryVehiclePollingEntity,
     TeslemetryVehicleStreamEntity,
 )
 from .helpers import handle_vehicle_command
@@ -64,20 +64,20 @@ async def async_setup_entry(
     async_add_entities(
         chain(
             (
-                TeslemetryPollingClimateEntity(
+                TeslemetryVehiclePollingClimateEntity(
                     vehicle, TeslemetryClimateSide.DRIVER, entry.runtime_data.scopes
                 )
-                if vehicle.api.pre2021 or vehicle.firmware < "2024.44.25"
+                if vehicle.poll or vehicle.firmware < "2024.44.25"
                 else TeslemetryStreamingClimateEntity(
                     vehicle, TeslemetryClimateSide.DRIVER, entry.runtime_data.scopes
                 )
                 for vehicle in entry.runtime_data.vehicles
             ),
             (
-                TeslemetryPollingCabinOverheatProtectionEntity(
+                TeslemetryVehiclePollingCabinOverheatProtectionEntity(
                     vehicle, entry.runtime_data.scopes
                 )
-                if vehicle.api.pre2021 or vehicle.firmware < "2024.44.25"
+                if vehicle.poll or vehicle.firmware < "2024.44.25"
                 else TeslemetryStreamingCabinOverheatProtectionEntity(
                     vehicle, entry.runtime_data.scopes
                 )
@@ -91,7 +91,6 @@ class TeslemetryClimateEntity(TeslemetryRootEntity, ClimateEntity):
     """Vehicle Climate Control."""
 
     api: Vehicle
-
     _attr_precision = PRECISION_HALVES
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.HEAT_COOL, HVACMode.OFF]
@@ -178,7 +177,9 @@ class TeslemetryClimateEntity(TeslemetryRootEntity, ClimateEntity):
         self.async_write_ha_state()
 
 
-class TeslemetryPollingClimateEntity(TeslemetryClimateEntity, TeslemetryVehicleEntity):
+class TeslemetryVehiclePollingClimateEntity(
+    TeslemetryClimateEntity, TeslemetryVehiclePollingEntity
+):
     """Polling vehicle climate entity."""
 
     _attr_supported_features = (
@@ -290,9 +291,7 @@ class TeslemetryStreamingClimateEntity(
             )
         )
         self.async_on_remove(
-            self.vehicle.stream_vehicle.listen_HvacACEnabled(
-                self._async_handle_hvac_ac_enabled
-            )
+            self.vehicle.stream_vehicle.listen_HvacPower(self._async_handle_hvac_power)
         )
         self.async_on_remove(
             self.vehicle.stream_vehicle.listen_ClimateKeeperMode(
@@ -330,25 +329,29 @@ class TeslemetryStreamingClimateEntity(
                     )
                 )
 
-    def _async_handle_inside_temp(self, data: float | None):
+    def _async_handle_inside_temp(self, data: float | None) -> None:
         self._attr_current_temperature = data
         self.async_write_ha_state()
 
-    def _async_handle_hvac_ac_enabled(self, data: bool | None):
+    def _async_handle_hvac_power(self, data: str | None) -> None:
         self._attr_hvac_mode = (
-            None if data is None else HVACMode.HEAT_COOL if data else HVACMode.OFF
+            None
+            if data is None
+            else HVACMode.HEAT_COOL
+            if data == "On"
+            else HVACMode.OFF
         )
         self.async_write_ha_state()
 
-    def _async_handle_climate_keeper_mode(self, data: str | None):
+    def _async_handle_climate_keeper_mode(self, data: str | None) -> None:
         self._attr_preset_mode = PRESET_MODES.get(data) if data else None
         self.async_write_ha_state()
 
-    def _async_handle_hvac_temperature_request(self, data: float | None):
+    def _async_handle_hvac_temperature_request(self, data: float | None) -> None:
         self._attr_target_temperature = data
         self.async_write_ha_state()
 
-    def _async_handle_rhd(self, data: bool | None):
+    def _async_handle_rhd(self, data: bool | None) -> None:
         if data is not None:
             self.rhd = data
 
@@ -370,7 +373,6 @@ class TeslemetryCabinOverheatProtectionEntity(TeslemetryRootEntity, ClimateEntit
     """Vehicle Cabin Overheat Protection."""
 
     api: Vehicle
-
     _attr_precision = PRECISION_WHOLE
     _attr_target_temperature_step = 5
     _attr_min_temp = 30
@@ -430,8 +432,8 @@ class TeslemetryCabinOverheatProtectionEntity(TeslemetryRootEntity, ClimateEntit
         self.async_write_ha_state()
 
 
-class TeslemetryPollingCabinOverheatProtectionEntity(
-    TeslemetryVehicleEntity, TeslemetryCabinOverheatProtectionEntity
+class TeslemetryVehiclePollingCabinOverheatProtectionEntity(
+    TeslemetryVehiclePollingEntity, TeslemetryCabinOverheatProtectionEntity
 ):
     """Vehicle Cabin Overheat Protection."""
 
@@ -536,15 +538,15 @@ class TeslemetryStreamingCabinOverheatProtectionEntity(
             )
         )
 
-    def _async_handle_inside_temp(self, value: float | None):
+    def _async_handle_inside_temp(self, value: float | None) -> None:
         self._attr_current_temperature = value
         self.async_write_ha_state()
 
-    def _async_handle_protection_mode(self, value: str | None):
+    def _async_handle_protection_mode(self, value: str | None) -> None:
         self._attr_hvac_mode = COP_MODES.get(value) if value is not None else None
         self.async_write_ha_state()
 
-    def _async_handle_temperature_limit(self, value: str | None):
+    def _async_handle_temperature_limit(self, value: str | None) -> None:
         self._attr_target_temperature = (
             COP_LEVELS.get(value) if value is not None else None
         )

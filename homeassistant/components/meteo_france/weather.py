@@ -3,9 +3,9 @@
 import logging
 import time
 
-from meteofrance_api.model.forecast import Forecast as MeteoFranceForecast
-
 from homeassistant.components.weather import (
+    ATTR_CONDITION_CLEAR_NIGHT,
+    ATTR_CONDITION_SUNNY,
     ATTR_FORECAST_CONDITION,
     ATTR_FORECAST_HUMIDITY,
     ATTR_FORECAST_NATIVE_PRECIPITATION,
@@ -29,10 +29,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -45,13 +42,18 @@ from .const import (
     MANUFACTURER,
     MODEL,
 )
+from .coordinator import MeteoFranceForecastUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def format_condition(condition: str):
+def format_condition(condition: str, force_day: bool = False) -> str:
     """Return condition from dict CONDITION_MAP."""
-    return CONDITION_MAP.get(condition, condition)
+    mapped_condition = CONDITION_MAP.get(condition, condition)
+    if force_day and mapped_condition == ATTR_CONDITION_CLEAR_NIGHT:
+        # Meteo-France can return clear night condition instead of sunny for daily weather, so we map it to sunny
+        return ATTR_CONDITION_SUNNY
+    return mapped_condition
 
 
 async def async_setup_entry(
@@ -60,7 +62,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Meteo-France weather platform."""
-    coordinator: DataUpdateCoordinator[MeteoFranceForecast] = hass.data[DOMAIN][
+    coordinator: MeteoFranceForecastUpdateCoordinator = hass.data[DOMAIN][
         entry.entry_id
     ][COORDINATOR_FORECAST]
 
@@ -81,7 +83,7 @@ async def async_setup_entry(
 
 
 class MeteoFranceWeather(
-    CoordinatorEntity[DataUpdateCoordinator[MeteoFranceForecast]], WeatherEntity
+    CoordinatorEntity[MeteoFranceForecastUpdateCoordinator], WeatherEntity
 ):
     """Representation of a weather condition."""
 
@@ -95,13 +97,13 @@ class MeteoFranceWeather(
     )
 
     def __init__(
-        self, coordinator: DataUpdateCoordinator[MeteoFranceForecast], mode: str
+        self, coordinator: MeteoFranceForecastUpdateCoordinator, mode: str
     ) -> None:
         """Initialise the platform with a data instance and station name."""
         super().__init__(coordinator)
-        self._city_name = self.coordinator.data.position["name"]
+        self._attr_name = self.coordinator.data.position["name"]
         self._mode = mode
-        self._unique_id = f"{self.coordinator.data.position['lat']},{self.coordinator.data.position['lon']}"
+        self._attr_unique_id = f"{self.coordinator.data.position['lat']},{self.coordinator.data.position['lon']}"
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -111,16 +113,6 @@ class MeteoFranceWeather(
         self.platform.config_entry.async_create_task(
             self.hass, self.async_update_listeners(("daily", "hourly"))
         )
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the sensor."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._city_name
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -135,34 +127,39 @@ class MeteoFranceWeather(
         )
 
     @property
-    def condition(self):
+    def condition(self) -> str:
         """Return the current condition."""
         return format_condition(
             self.coordinator.data.current_forecast["weather"]["desc"]
         )
 
     @property
-    def native_temperature(self):
+    def native_temperature(self) -> float:
         """Return the temperature."""
         return self.coordinator.data.current_forecast["T"]["value"]
 
     @property
-    def native_pressure(self):
+    def native_pressure(self) -> float:
         """Return the pressure."""
         return self.coordinator.data.current_forecast["sea_level"]
 
     @property
-    def humidity(self):
+    def humidity(self) -> float:
         """Return the humidity."""
         return self.coordinator.data.current_forecast["humidity"]
 
     @property
-    def native_wind_speed(self):
+    def native_wind_speed(self) -> float:
         """Return the wind speed."""
         return self.coordinator.data.current_forecast["wind"]["speed"]
 
     @property
-    def wind_bearing(self):
+    def native_wind_gust_speed(self) -> float | None:
+        """Return the wind gust speed."""
+        return self.coordinator.data.current_forecast["wind"].get("gust")
+
+    @property
+    def wind_bearing(self) -> float | None:
         """Return the wind bearing."""
         wind_bearing = self.coordinator.data.current_forecast["wind"]["direction"]
         if wind_bearing != -1:
@@ -207,7 +204,7 @@ class MeteoFranceWeather(
                             forecast["dt"]
                         ).isoformat(),
                         ATTR_FORECAST_CONDITION: format_condition(
-                            forecast["weather12H"]["desc"]
+                            forecast["weather12H"]["desc"], force_day=True
                         ),
                         ATTR_FORECAST_HUMIDITY: forecast["humidity"]["max"],
                         ATTR_FORECAST_NATIVE_TEMP: forecast["T"]["max"],
