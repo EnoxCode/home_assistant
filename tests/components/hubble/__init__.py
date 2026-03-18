@@ -117,6 +117,21 @@ MOCK_DISCOVERY = {
             ],
         },
     ],
+    "selectableWidgets": [
+        {
+            "widgetId": 5,
+            "pageId": 1,
+            "visualization": "countdown",
+            "title": "Pasta Timer",
+        },
+        {
+            "widgetId": 8,
+            "pageId": 1,
+            "visualization": "countdown",
+            "title": "Oven Timer",
+        },
+        {"widgetId": 12, "pageId": 2, "visualization": "timer", "title": None},
+    ],
 }
 
 MOCK_MEDIA_STATE = {
